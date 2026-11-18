@@ -43,7 +43,7 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image: linear-gradient(to right, #0002 1px, transparent 1px), linear-gradient(to bottom, #0002 1px, transparent 1px);
+  background-image: linear-gradient(to right, #000 4px, transparent 4px), linear-gradient(to bottom, #000 4px, transparent 4px);
   background-size: var(--cell-size) var(--cell-size);
 }
 .keyboard-cursor {
