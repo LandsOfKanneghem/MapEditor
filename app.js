@@ -6,6 +6,10 @@
   const TILE_SIZE = 48;
   const TERRAIN = Object.freeze({ grass: 0, sand: 1, 'deep-water': 2, dirt: 3, swamp: 4, 'shallow-water': 5 });
   const terrainNames = Object.fromEntries(Object.entries(TERRAIN).map(([name, id]) => [id, name]));
+  const MOB_TYPES = Object.freeze({
+    wolf: { name: 'Волк', src: 'assets/mobs/wolf.png', padding: { top: 36, right: 3, bottom: 4, left: 3 } },
+    'hill-giant': { name: 'Холмовой великан', src: 'assets/mobs/hill-giant.png', padding: { top: 4, right: 2, bottom: 4, left: 2 } }
+  });
   const landLayers = [
     { terrain: TERRAIN.dirt, image: 'dirt', level: 1 },
     { terrain: TERRAIN.swamp, image: 'swamp', level: 2 },
@@ -18,10 +22,18 @@
   const maskIndex = new Map(MASKS.map((mask, index) => [mask, index]));
   const neighbors = [[0, -1, 1], [1, -1, 2], [1, 0, 4], [1, 1, 8], [0, 1, 16], [-1, 1, 32], [-1, 0, 64], [-1, -1, 128]];
   const map = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(TERRAIN.grass));
+  const mobs = [];
   const canvas = document.getElementById('map');
   const context = canvas.getContext('2d');
   const surface = document.querySelector('.map-surface');
   const buttons = [...document.querySelectorAll('[data-terrain]')];
+  const mobButtons = [...document.querySelectorAll('[data-mob]')];
+  const modeButtons = [...document.querySelectorAll('[data-mode].toolbar-button')];
+  const terrainPalette = document.getElementById('terrain-palette');
+  const mobPalette = document.getElementById('mob-palette');
+  const paletteTitle = document.getElementById('terrain-title');
+  const mobLayer = document.getElementById('mob-layer');
+  const dropTarget = document.getElementById('mob-drop-target');
   const status = document.getElementById('status');
   const cursor = document.getElementById('keyboard-cursor');
   const saveButton = document.getElementById('save-map');
@@ -29,6 +41,9 @@
   const fileInput = document.getElementById('map-file');
   const images = {};
   let selectedTerrain = TERRAIN.grass;
+  let selectedMob = 'wolf';
+  let editorMode = 'terrain';
+  let mobDrag = null;
   let ready = false;
   let activePointer = null;
   let lastCell = null;
@@ -85,18 +100,92 @@
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLUMNS; x++) drawCell(x, y);
   }
 
+  function mobAt(cell, except = null) {
+    return mobs.find(mob => mob !== except && mob.x === cell.x && mob.y === cell.y);
+  }
+
+  function renderMobs() {
+    const elements = [...mobs].sort((a, b) => a.y - b.y || a.x - b.x).map(mob => {
+      const template = MOB_TYPES[mob.type];
+      const { top, right, bottom, left } = template.padding;
+      if (!mob.element) {
+        const image = document.createElement('img');
+        image.className = 'map-mob';
+        image.src = template.src;
+        image.alt = template.name;
+        image.title = template.name;
+        image.draggable = false;
+        // Exclude transparent sprite margins from mouse hit testing.
+        image.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px)`;
+        mob.element = image;
+      }
+      // Keep visible pixels on the map without shifting transparent margins inward.
+      mob.element.style.left = `${Math.max(-left, Math.min(COLUMNS * TILE_SIZE - 60 + right, (mob.x + .5) * TILE_SIZE - 30))}px`;
+      mob.element.style.top = `${Math.max(-top, Math.min(ROWS * TILE_SIZE - 72 + bottom, (mob.y + 1) * TILE_SIZE - 72))}px`;
+      mob.element.style.zIndex = mob.y + 1;
+      mob.element.dataset.x = mob.x;
+      mob.element.dataset.y = mob.y;
+      return mob.element;
+    });
+    mobLayer.replaceChildren(...elements);
+  }
+
+  function placeMob(cell) {
+    if (mobAt(cell)) return null;
+    const mob = { type: selectedMob, x: cell.x, y: cell.y };
+    mobs.push(mob);
+    renderMobs();
+    return mob;
+  }
+
   function endStroke() {
     const pointer = activePointer;
     activePointer = null;
     lastCell = null;
-    if (pointer !== null && canvas.hasPointerCapture(pointer)) canvas.releasePointerCapture(pointer);
+    if (mobDrag) {
+      mobDrag.mob.element.classList.remove('dragging');
+      mobDrag.mob.element.style.transform = '';
+      mobDrag = null;
+      renderMobs();
+    }
+    dropTarget.hidden = true;
+    surface.classList.remove('dragging');
+    if (pointer !== null && surface.hasPointerCapture(pointer)) surface.releasePointerCapture(pointer);
+  }
+
+  function pointFromPointer(event) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left) * COLUMNS * TILE_SIZE / rect.width,
+      y: (event.clientY - rect.top) * ROWS * TILE_SIZE / rect.height
+    };
+  }
+
+  function cellFromPoint(point) {
+    const x = Math.floor(point.x / TILE_SIZE), y = Math.floor(point.y / TILE_SIZE);
+    return x >= 0 && x < COLUMNS && y >= 0 && y < ROWS ? { x, y } : null;
   }
 
   function cellFromPointer(event) {
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((event.clientX - rect.left) * COLUMNS / rect.width);
-    const y = Math.floor((event.clientY - rect.top) * ROWS / rect.height);
-    return x >= 0 && x < COLUMNS && y >= 0 && y < ROWS ? { x, y } : null;
+    return cellFromPoint(pointFromPointer(event));
+  }
+
+  function updateMobDrag(event) {
+    const point = pointFromPointer(event);
+    const dx = point.x - mobDrag.start.x, dy = point.y - mobDrag.start.y;
+    mobDrag.mob.element.style.transform = `translate(${dx}px, ${dy}px)`;
+    const target = cellFromPoint({
+      x: (mobDrag.mob.x + .5) * TILE_SIZE + dx,
+      y: (mobDrag.mob.y + .5) * TILE_SIZE + dy
+    });
+    const inside = cellFromPoint(point) !== null && target !== null;
+    dropTarget.hidden = !inside;
+    if (inside) {
+      dropTarget.style.left = `${target.x * TILE_SIZE}px`;
+      dropTarget.style.top = `${target.y * TILE_SIZE}px`;
+      dropTarget.dataset.valid = String(!mobAt(target, mobDrag.mob));
+    }
+    return inside ? target : null;
   }
 
   function setTerrain(x, y, terrain, dirty) {
@@ -163,7 +252,7 @@
   }
 
   function readMapData(data) {
-    if (data?.format !== 'kanneghem-map' || data.version !== 1) {
+    if (data?.format !== 'kanneghem-map' || (data.version !== 1 && data.version !== 2)) {
       throw new Error('Неподдерживаемый формат или версия карты.');
     }
     if (data.width !== COLUMNS || data.height !== ROWS) {
@@ -188,7 +277,23 @@
         }
       }
     }
-    return tiles;
+    const savedMobs = data.version === 1 ? [] : data.mobs;
+    if (!Array.isArray(savedMobs) || savedMobs.length > COLUMNS * ROWS) {
+      throw new Error('Неверный список мобов карты.');
+    }
+    const occupied = new Set();
+    const loadedMobs = savedMobs.map(mob => {
+      if (!mob || typeof mob.type !== 'string' || !Object.hasOwn(MOB_TYPES, mob.type) ||
+          !Number.isInteger(mob.x) || !Number.isInteger(mob.y) ||
+          mob.x < 0 || mob.x >= COLUMNS || mob.y < 0 || mob.y >= ROWS) {
+        throw new Error('В карте указан неизвестный моб или неверная клетка.');
+      }
+      const position = mob.y * COLUMNS + mob.x;
+      if (occupied.has(position)) throw new Error('На одной клетке не может быть несколько мобов.');
+      occupied.add(position);
+      return { type: mob.type, x: mob.x, y: mob.y };
+    });
+    return { tiles, mobs: loadedMobs };
   }
 
   saveButton.addEventListener('click', () => {
@@ -196,10 +301,11 @@
     endStroke();
     const data = {
       format: 'kanneghem-map',
-      version: 1,
+      version: 2,
       width: COLUMNS,
       height: ROWS,
-      tiles: map.map(row => row.map(terrain => terrainNames[terrain]))
+      tiles: map.map(row => row.map(terrain => terrainNames[terrain])),
+      mobs: mobs.map(({ type, x, y }) => ({ type, x, y }))
     };
     const blob = new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -225,11 +331,13 @@
     loadButton.disabled = true;
     saveButton.disabled = true;
     try {
-      const tiles = readMapData(JSON.parse(await file.text()));
+      const loaded = readMapData(JSON.parse(await file.text()));
       // Validate the entire file before replacing the current map.
       endStroke();
-      map.splice(0, ROWS, ...tiles);
+      map.splice(0, ROWS, ...loaded.tiles);
+      mobs.splice(0, mobs.length, ...loaded.mobs);
       renderMap();
+      renderMobs();
       status.textContent = 'Карта загружена.';
     } catch (error) {
       status.textContent = error instanceof SyntaxError
@@ -249,6 +357,26 @@
     gridButton.setAttribute('aria-pressed', String(!grid.hidden));
   });
 
+  for (const button of modeButtons) {
+    button.addEventListener('click', () => {
+      endStroke();
+      editorMode = button.dataset.mode;
+      surface.dataset.mode = editorMode;
+      terrainPalette.hidden = editorMode !== 'terrain';
+      mobPalette.hidden = editorMode !== 'mobs';
+      paletteTitle.textContent = editorMode === 'terrain' ? 'Террейн' : 'Мобы';
+      for (const item of modeButtons) item.setAttribute('aria-pressed', String(item === button));
+    });
+  }
+
+  for (const button of mobButtons) {
+    button.addEventListener('click', () => {
+      endStroke();
+      selectedMob = button.dataset.mob;
+      for (const item of mobButtons) item.setAttribute('aria-pressed', String(item === button));
+    });
+  }
+
   for (const button of buttons) {
     button.addEventListener('click', () => {
       endStroke();
@@ -257,26 +385,50 @@
     });
   }
 
-  canvas.addEventListener('pointerdown', event => {
+  surface.addEventListener('pointerdown', event => {
     if (!ready || !event.isPrimary || event.button !== 0 || activePointer !== null) return;
+    const cell = cellFromPointer(event);
+    if (!cell) return;
     activePointer = event.pointerId;
     lastCell = null;
-    canvas.setPointerCapture(event.pointerId);
-    paintPointer(event);
+    surface.setPointerCapture(event.pointerId);
+    if (editorMode === 'terrain') {
+      paintPointer(event);
+    } else {
+      const mob = mobs.find(item => item.element === event.target) ?? mobAt(cell) ?? placeMob(cell);
+      mobDrag = { mob, start: pointFromPointer(event) };
+      mob.element.classList.add('dragging');
+      mob.element.style.zIndex = ROWS + 1;
+      surface.classList.add('dragging');
+      keyboardCell = { x: mob.x, y: mob.y };
+      updateKeyboardCursor();
+      updateMobDrag(event);
+    }
     event.preventDefault();
   });
-  canvas.addEventListener('pointermove', event => {
+  surface.addEventListener('pointermove', event => {
     if (event.pointerId !== activePointer) return;
     if (!(event.buttons & 1)) { endStroke(); return; }
+    if (mobDrag) { updateMobDrag(event); return; }
     const samples = event.getCoalescedEvents?.() ?? [];
     for (const sample of samples.length ? samples : [event]) paintPointer(sample);
   });
-  canvas.addEventListener('lostpointercapture', endStroke);
-  canvas.addEventListener('pointercancel', endStroke);
-  window.addEventListener('pointerup', event => { if (event.pointerId === activePointer) endStroke(); });
+  surface.addEventListener('lostpointercapture', endStroke);
+  surface.addEventListener('pointercancel', endStroke);
+  window.addEventListener('pointerup', event => {
+    if (event.pointerId !== activePointer) return;
+    if (mobDrag) {
+      const target = updateMobDrag(event);
+      if (target && !mobAt(target, mobDrag.mob)) {
+        mobDrag.mob.x = target.x;
+        mobDrag.mob.y = target.y;
+      }
+    }
+    endStroke();
+  });
   window.addEventListener('blur', endStroke);
   document.addEventListener('visibilitychange', () => { if (document.hidden) endStroke(); });
-  canvas.addEventListener('contextmenu', event => event.preventDefault());
+  surface.addEventListener('contextmenu', event => event.preventDefault());
   canvas.addEventListener('keydown', event => {
     if (!ready) return;
     const movement = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
@@ -284,23 +436,31 @@
       keyboardCell.x = Math.max(0, Math.min(COLUMNS - 1, keyboardCell.x + movement[0]));
       keyboardCell.y = Math.max(0, Math.min(ROWS - 1, keyboardCell.y + movement[1]));
       updateKeyboardCursor();
-    } else if (event.key === ' ' || event.key === 'Enter') paintLine(keyboardCell, keyboardCell);
+    } else if (event.key === ' ' || event.key === 'Enter') {
+      if (editorMode === 'terrain') paintLine(keyboardCell, keyboardCell);
+      else placeMob(keyboardCell);
+    }
     else return;
     event.preventDefault();
   });
 
   async function loadTiles() {
-    await Promise.all(['base', 'sand', 'water', 'dirt', 'swamp', 'shallow-water'].map(name => new Promise((resolve, reject) => {
+    const assets = [
+      ...['base', 'sand', 'water', 'dirt', 'swamp', 'shallow-water'].map(name => [name, `assets/terrain/${name}.png`]),
+      ...Object.entries(MOB_TYPES).map(([name, template]) => [name, template.src])
+    ];
+    await Promise.all(assets.map(([name, src]) => new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = () => { images[name] = image; resolve(); };
       image.onerror = () => reject(new Error(`Cannot load ${name} tiles`));
-      image.src = `assets/terrain/${name}.png`;
+      image.src = src;
     })));
     context.imageSmoothingEnabled = false;
     renderMap();
     ready = true;
     surface.setAttribute('aria-busy', 'false');
     for (const button of buttons) button.disabled = false;
+    for (const button of [...modeButtons, ...mobButtons]) button.disabled = false;
     saveButton.disabled = false;
     loadButton.disabled = false;
     status.textContent = '';
@@ -308,6 +468,6 @@
 
   loadTiles().catch(error => {
     console.error(error);
-    status.textContent = 'Не удалось загрузить тайлы. Обновите страницу.';
+    status.textContent = 'Не удалось загрузить ресурсы карты. Обновите страницу.';
   });
 })();

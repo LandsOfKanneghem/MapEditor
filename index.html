@@ -28,22 +28,35 @@
           <path d="M6 3v18M12 3v18M18 3v18M3 6h18M3 12h18M3 18h18"/>
         </svg>
       </button>
+      <button type="button" class="toolbar-button" data-mode="terrain" aria-label="Редактирование террейна" title="Редактирование террейна" aria-pressed="true" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+          <path d="m14 4 3-2 5 5-2 3-8 8-5-5ZM7 14c-5 0-1 6-5 7 6 2 11-1 8-5"/>
+        </svg>
+      </button>
+      <button type="button" class="toolbar-button" data-mode="mobs" aria-label="Размещение мобов" title="Размещение мобов" aria-pressed="false" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">
+          <ellipse cx="6" cy="7" rx="2" ry="3"/><ellipse cx="12" cy="5" rx="2" ry="3"/><ellipse cx="18" cy="7" rx="2" ry="3"/>
+          <path d="M5 18c0-3 4-8 7-8s7 5 7 8c0 5-5 2-7 2s-7 3-7-2Z"/>
+        </svg>
+      </button>
     </div>
     <input type="file" id="map-file" accept=".json,application/json" hidden>
     <section class="map-panel" aria-label="Карта">
       <div class="map-viewport">
-        <div class="map-surface" aria-busy="true">
+        <div class="map-surface" data-mode="terrain" aria-busy="true">
           <canvas id="map" width="576" height="576" tabindex="0" aria-label="Карта 12 на 12 клеток" aria-describedby="keyboard-help"></canvas>
           <div id="map-grid" class="map-grid" aria-hidden="true"></div>
+          <div id="mob-layer" class="mob-layer"></div>
+          <div id="mob-drop-target" class="mob-drop-target" hidden aria-hidden="true"></div>
           <div id="keyboard-cursor" class="keyboard-cursor" aria-hidden="true"></div>
         </div>
       </div>
       <p id="status" role="status">Загрузка тайлов…</p>
-      <span id="keyboard-help" class="sr-only">С клавиатуры: стрелки выбирают клетку, пробел или Enter закрашивает её выбранным террейном.</span>
+      <span id="keyboard-help" class="sr-only">С клавиатуры: стрелки выбирают клетку, пробел или Enter применяет выбранный террейн или добавляет выбранного моба.</span>
     </section>
     <aside class="terrain-panel" aria-labelledby="terrain-title">
       <h2 id="terrain-title">Террейн</h2>
-      <div class="terrain-list" role="group" aria-label="Выбор террейна">
+      <div id="terrain-palette" class="terrain-list" role="group" aria-label="Выбор террейна">
         <button type="button" class="terrain-option" data-terrain="grass" aria-label="Трава" title="Трава" aria-pressed="true" disabled>
           <span class="terrain-swatch terrain-swatch--grass" aria-hidden="true"></span>
         </button>
@@ -61,6 +74,14 @@
         </button>
         <button type="button" class="terrain-option" data-terrain="deep-water" aria-label="Глубоководье" title="Глубоководье" aria-pressed="false" disabled>
           <span class="terrain-swatch terrain-swatch--water" aria-hidden="true"></span>
+        </button>
+      </div>
+      <div id="mob-palette" class="terrain-list" role="group" aria-label="Выбор моба" hidden>
+        <button type="button" class="terrain-option" data-mob="wolf" aria-label="Волк" title="Волк" aria-pressed="true" disabled>
+          <img class="mob-swatch" src="assets/mobs/wolf.png" alt="" width="48" height="48" draggable="false">
+        </button>
+        <button type="button" class="terrain-option" data-mob="hill-giant" aria-label="Холмовой великан" title="Холмовой великан" aria-pressed="false" disabled>
+          <img class="mob-swatch" src="assets/mobs/hill-giant.png" alt="" width="48" height="48" draggable="false">
         </button>
       </div>
     </aside>

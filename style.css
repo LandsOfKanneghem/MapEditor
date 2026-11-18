@@ -37,17 +37,25 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
 .toolbar-button:disabled { opacity: .5; cursor: wait; }
 .map-panel { min-width: 0; }
 .map-viewport { max-width: 100%; overflow: auto; border: 1px solid #615b48; }
-.map-surface { position: relative; width: var(--map-size); height: var(--map-size); background: #465530; }
+.map-surface { position: relative; width: var(--map-size); height: var(--map-size); background: #465530; touch-action: none; }
 #map { display: block; width: var(--map-size); height: var(--map-size); image-rendering: pixelated; cursor: crosshair; touch-action: none; }
 #map:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .map-grid {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 1;
   background-image: linear-gradient(to right, #000 4px, transparent 4px), linear-gradient(to bottom, #000 4px, transparent 4px);
   background-size: var(--cell-size) var(--cell-size);
   background-position: -2px -2px;
 }
+.mob-layer { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
+.map-mob { position: absolute; width: 60px; height: 72px; image-rendering: pixelated; pointer-events: none; user-select: none; }
+.map-surface[data-mode="mobs"] #map { cursor: copy; }
+.map-surface[data-mode="mobs"] .map-mob { pointer-events: auto; cursor: grab; }
+.map-surface.dragging #map, .map-surface[data-mode="mobs"] .map-mob.dragging { cursor: grabbing; }
+.mob-drop-target { position: absolute; width: var(--cell-size); height: var(--cell-size); z-index: 3; border: 2px solid var(--accent); pointer-events: none; }
+.mob-drop-target[data-valid="false"] { border-color: #ff4d4d; }
 .keyboard-cursor {
   display: none;
   position: absolute;
@@ -58,9 +66,11 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
   border: 2px solid var(--accent);
   transform: translate(calc(var(--cursor-x, 0) * var(--cell-size)), calc(var(--cursor-y, 0) * var(--cell-size)));
   pointer-events: none;
+  z-index: 4;
 }
 #map:focus-visible ~ .keyboard-cursor { display: block; }
 .terrain-list { display: grid; grid-template-columns: repeat(4, 52px); gap: 4px; }
+.terrain-list[hidden] { display: none; }
 .terrain-option {
   display: grid;
   place-items: center;
@@ -78,6 +88,7 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
 .terrain-option:focus-visible, .toolbar-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .terrain-option:disabled { opacity: .5; cursor: wait; }
 .terrain-swatch { display: block; width: 48px; height: 48px; image-rendering: pixelated; background: url('assets/terrain/base.png') 0 0 / 144px 288px; }
+.mob-swatch { display: block; width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
 .terrain-swatch--sand { background-position: 0 -48px; }
 .terrain-swatch--water { background-position: 0 -96px; }
 .terrain-swatch--dirt { background-position: 0 -144px; }
