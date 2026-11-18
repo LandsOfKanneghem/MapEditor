@@ -51,7 +51,7 @@
   let selectedMob = 'wolf';
   let selectedObject = 'crate';
   let editorMode = 'terrain';
-  let mobDrag = null;
+  let entityDrag = null;
   let ready = false;
   let activePointer = null;
   let lastCell = null;
@@ -112,12 +112,12 @@
     return mobs.find(mob => mob !== except && mob.x === cell.x && mob.y === cell.y);
   }
 
-  function objectAt(cell) {
-    return objects.find(object => object.x === cell.x && object.y === cell.y);
+  function objectAt(cell, except = null) {
+    return objects.find(object => object !== except && object.x === cell.x && object.y === cell.y);
   }
 
-  function isOccupied(cell, exceptMob = null) {
-    return Boolean(mobAt(cell, exceptMob) || objectAt(cell));
+  function isOccupied(cell, except = null) {
+    return Boolean(mobAt(cell, except) || objectAt(cell, except));
   }
 
   function renderObjects() {
@@ -140,9 +140,11 @@
   }
 
   function placeObject(cell) {
-    if (isOccupied(cell)) return;
-    objects.push({ type: selectedObject, x: cell.x, y: cell.y });
+    if (isOccupied(cell)) return null;
+    const object = { type: selectedObject, x: cell.x, y: cell.y };
+    objects.push(object);
     renderObjects();
+    return object;
   }
 
   function renderMobs() {
@@ -183,14 +185,17 @@
     const pointer = activePointer;
     activePointer = null;
     lastCell = null;
-    if (mobDrag) {
-      mobDrag.mob.element.classList.remove('dragging');
-      mobDrag.mob.element.style.transform = '';
-      mobDrag = null;
-      renderMobs();
+    if (entityDrag) {
+      const { entity, render } = entityDrag;
+      entity.element.classList.remove('dragging');
+      entity.element.style.transform = '';
+      entity.element.style.zIndex = '';
+      entityDrag = null;
+      render();
     }
     dropTarget.hidden = true;
     surface.classList.remove('dragging');
+    objectLayer.classList.remove('dragging');
     if (pointer !== null && surface.hasPointerCapture(pointer)) surface.releasePointerCapture(pointer);
   }
 
@@ -221,20 +226,20 @@
 
   function updatePlacementHover(event) {
     if (!ready || editorMode === 'terrain' || !event.isPrimary || event.pointerType === 'touch') return;
-    const hovered = mobs.find(mob => mob.element === event.target);
+    const hovered = mobs.find(mob => mob.element === event.target) ?? objects.find(object => object.element === event.target);
     showPlacementTarget(hovered ? { x: hovered.x, y: hovered.y } : cellFromPointer(event));
   }
 
-  function updateMobDrag(event) {
+  function updateEntityDrag(event) {
     const point = pointFromPointer(event);
-    const dx = point.x - mobDrag.start.x, dy = point.y - mobDrag.start.y;
-    mobDrag.mob.element.style.transform = `translate(${dx}px, ${dy}px)`;
+    const dx = point.x - entityDrag.start.x, dy = point.y - entityDrag.start.y;
+    entityDrag.entity.element.style.transform = `translate(${dx}px, ${dy}px)`;
     const target = cellFromPoint({
-      x: (mobDrag.mob.x + .5) * TILE_SIZE + dx,
-      y: (mobDrag.mob.y + .5) * TILE_SIZE + dy
+      x: (entityDrag.entity.x + .5) * TILE_SIZE + dx,
+      y: (entityDrag.entity.y + .5) * TILE_SIZE + dy
     });
     const inside = cellFromPoint(point) !== null && target !== null;
-    showPlacementTarget(inside ? target : null, mobDrag.mob);
+    showPlacementTarget(inside ? target : null, entityDrag.entity);
     return inside ? target : null;
   }
 
@@ -474,24 +479,25 @@
     surface.setPointerCapture(event.pointerId);
     if (editorMode === 'terrain') {
       paintPointer(event);
-    } else if (editorMode === 'objects') {
-      placeObject(cell);
-      showPlacementTarget(cell);
     } else {
-      const mob = mobs.find(item => item.element === event.target) ?? mobAt(cell) ?? placeMob(cell);
-      if (!mob) {
+      const editingObjects = editorMode === 'objects';
+      const entries = editingObjects ? objects : mobs;
+      const entity = entries.find(item => item.element === event.target) ??
+        (editingObjects ? objectAt(cell) ?? placeObject(cell) : mobAt(cell) ?? placeMob(cell));
+      if (!entity) {
         endStroke();
         showPlacementTarget(cell);
         event.preventDefault();
         return;
       }
-      mobDrag = { mob, start: pointFromPointer(event) };
-      mob.element.classList.add('dragging');
-      mob.element.style.zIndex = ROWS + 1;
+      entityDrag = { entity, start: pointFromPointer(event), render: editingObjects ? renderObjects : renderMobs };
+      entity.element.classList.add('dragging');
+      entity.element.style.zIndex = ROWS + 1;
+      objectLayer.classList.toggle('dragging', editingObjects);
       surface.classList.add('dragging');
-      keyboardCell = { x: mob.x, y: mob.y };
+      keyboardCell = { x: entity.x, y: entity.y };
       updateKeyboardCursor();
-      updateMobDrag(event);
+      updateEntityDrag(event);
     }
     event.preventDefault();
   });
@@ -499,7 +505,7 @@
     if (activePointer === null) { updatePlacementHover(event); return; }
     if (event.pointerId !== activePointer) return;
     if (!(event.buttons & 1)) { endStroke(); return; }
-    if (mobDrag) { updateMobDrag(event); return; }
+    if (entityDrag) { updateEntityDrag(event); return; }
     if (editorMode !== 'terrain') { updatePlacementHover(event); return; }
     const samples = event.getCoalescedEvents?.() ?? [];
     for (const sample of samples.length ? samples : [event]) paintPointer(sample);
@@ -508,7 +514,7 @@
     if (activePointer === null) updatePlacementHover(event);
   });
   surface.addEventListener('pointerleave', () => {
-    if (!mobDrag) dropTarget.hidden = true;
+    if (!entityDrag) dropTarget.hidden = true;
   });
   surface.addEventListener('lostpointercapture', event => {
     if (event.pointerId === activePointer) endStroke();
@@ -516,11 +522,11 @@
   surface.addEventListener('pointercancel', endStroke);
   window.addEventListener('pointerup', event => {
     if (event.pointerId !== activePointer) return;
-    if (mobDrag) {
-      const target = updateMobDrag(event);
-      if (target && !isOccupied(target, mobDrag.mob)) {
-        mobDrag.mob.x = target.x;
-        mobDrag.mob.y = target.y;
+    if (entityDrag) {
+      const target = updateEntityDrag(event);
+      if (target && !isOccupied(target, entityDrag.entity)) {
+        entityDrag.entity.x = target.x;
+        entityDrag.entity.y = target.y;
       }
     }
     endStroke();
