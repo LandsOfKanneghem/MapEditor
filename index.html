@@ -44,6 +44,11 @@
           <path d="m3 6 9-3 9 3v13l-9 3-9-3ZM3 6l9 3 9-3M12 9v13M5 10l5 9M5 18l5-7M14 11l5 7M14 19l5-9"/>
         </svg>
       </button>
+      <button type="button" id="delete-selection" class="toolbar-button" aria-label="Удалить выделенное" title="Удалить выделенное" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="m6 6 12 12M18 6 6 18"/>
+        </svg>
+      </button>
     </div>
     <input type="file" id="map-file" accept=".json,application/json" hidden>
     <section class="map-panel" aria-label="Карта">
@@ -97,5 +102,15 @@
       </div>
     </aside>
   </main>
+  <svg class="selection-filters" width="0" height="0" aria-hidden="true" focusable="false">
+    <defs>
+      <filter id="entity-selection-outline" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+        <feMorphology in="SourceAlpha" operator="dilate" radius="2" result="expanded"/>
+        <feFlood flood-color="#b366ff" result="purple"/>
+        <feComposite in="purple" in2="expanded" operator="in" result="outline"/>
+        <feMerge><feMergeNode in="outline"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+  </svg>
 </body>
 </html>

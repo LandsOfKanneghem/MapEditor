@@ -46,12 +46,14 @@
   const saveButton = document.getElementById('save-map');
   const loadButton = document.getElementById('load-map');
   const fileInput = document.getElementById('map-file');
+  const deleteButton = document.getElementById('delete-selection');
   const images = {};
   let selectedTerrain = TERRAIN.grass;
   let selectedMob = 'wolf';
   let selectedObject = 'crate';
   let editorMode = 'terrain';
   let entityDrag = null;
+  let selectedEntity = null;
   let ready = false;
   let activePointer = null;
   let lastCell = null;
@@ -181,6 +183,36 @@
     return mob;
   }
 
+  function setEntitySelected(entity, selected) {
+    entity.element.classList.toggle('selected', selected);
+    const padding = MOB_TYPES[entity.type]?.padding;
+    if (padding) {
+      const inset = selected ? 2 : 0;
+      // Leave room for the contour without making transparent margins clickable.
+      entity.element.style.clipPath = `inset(${padding.top - inset}px ${padding.right - inset}px ${padding.bottom - inset}px ${padding.left - inset}px)`;
+    }
+  }
+
+  function selectEntity(entity) {
+    if (selectedEntity) setEntitySelected(selectedEntity, false);
+    selectedEntity = entity;
+    if (selectedEntity) setEntitySelected(selectedEntity, true);
+    deleteButton.disabled = !selectedEntity || !ready || loadButton.disabled;
+  }
+
+  function deleteSelection() {
+    if (deleteButton.disabled || !selectedEntity) return false;
+    endStroke();
+    const entries = mobs.includes(selectedEntity) ? mobs : objects;
+    const index = entries.indexOf(selectedEntity);
+    selectEntity(null);
+    if (index < 0) return false;
+    entries.splice(index, 1);
+    if (entries === mobs) renderMobs();
+    else renderObjects();
+    return true;
+  }
+
   function endStroke() {
     const pointer = activePointer;
     activePointer = null;
@@ -226,8 +258,10 @@
 
   function updatePlacementHover(event) {
     if (!ready || editorMode === 'terrain' || !event.isPrimary || event.pointerType === 'touch') return;
-    const hovered = mobs.find(mob => mob.element === event.target) ?? objects.find(object => object.element === event.target);
-    showPlacementTarget(hovered ? { x: hovered.x, y: hovered.y } : cellFromPointer(event));
+    const cell = cellFromPointer(event);
+    const hovered = mobs.find(mob => mob.element === event.target) ?? objects.find(object => object.element === event.target) ??
+      (cell ? mobAt(cell) ?? objectAt(cell) : null);
+    showPlacementTarget(hovered && hovered === selectedEntity ? null : hovered ? { x: hovered.x, y: hovered.y } : cell);
   }
 
   function updateEntityDrag(event) {
@@ -404,10 +438,12 @@
     endStroke();
     loadButton.disabled = true;
     saveButton.disabled = true;
+    deleteButton.disabled = true;
     try {
       const loaded = readMapData(JSON.parse(await file.text()));
       // Validate the entire file before replacing the current map.
       endStroke();
+      selectEntity(null);
       map.splice(0, ROWS, ...loaded.tiles);
       mobs.splice(0, mobs.length, ...loaded.mobs);
       objects.splice(0, objects.length, ...loaded.objects);
@@ -423,6 +459,7 @@
       fileInput.value = '';
       loadButton.disabled = false;
       saveButton.disabled = false;
+      deleteButton.disabled = !selectedEntity;
     }
   });
 
@@ -437,6 +474,7 @@
     button.addEventListener('click', () => {
       endStroke();
       editorMode = button.dataset.mode;
+      if (editorMode === 'terrain') selectEntity(null);
       surface.dataset.mode = editorMode;
       terrainPalette.hidden = editorMode !== 'terrain';
       mobPalette.hidden = editorMode !== 'mobs';
@@ -482,11 +520,14 @@
     } else {
       const editingObjects = editorMode === 'objects';
       const entries = editingObjects ? objects : mobs;
-      const entity = entries.find(item => item.element === event.target) ??
+      const clicked = mobs.find(item => item.element === event.target) ?? objects.find(item => item.element === event.target) ??
+        mobAt(cell) ?? objectAt(cell);
+      const entity = clicked ??
         (editingObjects ? objectAt(cell) ?? placeObject(cell) : mobAt(cell) ?? placeMob(cell));
-      if (!entity) {
+      selectEntity(entity);
+      if (!entity || !entries.includes(entity)) {
         endStroke();
-        showPlacementTarget(cell);
+        showPlacementTarget(entity ? null : cell);
         event.preventDefault();
         return;
       }
@@ -535,6 +576,12 @@
   window.addEventListener('blur', endStroke);
   document.addEventListener('visibilitychange', () => { if (document.hidden) endStroke(); });
   surface.addEventListener('contextmenu', event => event.preventDefault());
+  deleteButton.addEventListener('click', deleteSelection);
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Delete') return;
+    if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]')) return;
+    if (deleteSelection()) event.preventDefault();
+  });
   canvas.addEventListener('keydown', event => {
     if (!ready) return;
     const movement = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
