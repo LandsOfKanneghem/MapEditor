@@ -119,9 +119,9 @@
         image.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px)`;
         mob.element = image;
       }
-      // Keep visible pixels on the map without shifting transparent margins inward.
-      mob.element.style.left = `${Math.max(-left, Math.min(COLUMNS * TILE_SIZE - 60 + right, (mob.x + .5) * TILE_SIZE - 30))}px`;
-      mob.element.style.top = `${Math.max(-top, Math.min(ROWS * TILE_SIZE - 72 + bottom, (mob.y + 1) * TILE_SIZE - 72))}px`;
+      // Use the same anchor in every cell; the mob layer clips the map edges.
+      mob.element.style.left = `${(mob.x + .5) * TILE_SIZE - 30}px`;
+      mob.element.style.top = `${(mob.y + 1) * TILE_SIZE - 72}px`;
       mob.element.style.zIndex = mob.y + 1;
       mob.element.dataset.x = mob.x;
       mob.element.dataset.y = mob.y;
@@ -170,6 +170,20 @@
     return cellFromPoint(pointFromPointer(event));
   }
 
+  function showMobTarget(cell, except = null) {
+    dropTarget.hidden = !cell;
+    if (!cell) return;
+    dropTarget.style.left = `${cell.x * TILE_SIZE}px`;
+    dropTarget.style.top = `${cell.y * TILE_SIZE}px`;
+    dropTarget.dataset.valid = String(!mobAt(cell, except));
+  }
+
+  function updateMobHover(event) {
+    if (!ready || editorMode !== 'mobs' || !event.isPrimary || event.pointerType === 'touch') return;
+    const hovered = mobs.find(mob => mob.element === event.target);
+    showMobTarget(hovered ? { x: hovered.x, y: hovered.y } : cellFromPointer(event));
+  }
+
   function updateMobDrag(event) {
     const point = pointFromPointer(event);
     const dx = point.x - mobDrag.start.x, dy = point.y - mobDrag.start.y;
@@ -179,12 +193,7 @@
       y: (mobDrag.mob.y + .5) * TILE_SIZE + dy
     });
     const inside = cellFromPoint(point) !== null && target !== null;
-    dropTarget.hidden = !inside;
-    if (inside) {
-      dropTarget.style.left = `${target.x * TILE_SIZE}px`;
-      dropTarget.style.top = `${target.y * TILE_SIZE}px`;
-      dropTarget.dataset.valid = String(!mobAt(target, mobDrag.mob));
-    }
+    showMobTarget(inside ? target : null, mobDrag.mob);
     return inside ? target : null;
   }
 
@@ -407,13 +416,22 @@
     event.preventDefault();
   });
   surface.addEventListener('pointermove', event => {
+    if (activePointer === null) { updateMobHover(event); return; }
     if (event.pointerId !== activePointer) return;
     if (!(event.buttons & 1)) { endStroke(); return; }
     if (mobDrag) { updateMobDrag(event); return; }
     const samples = event.getCoalescedEvents?.() ?? [];
     for (const sample of samples.length ? samples : [event]) paintPointer(sample);
   });
-  surface.addEventListener('lostpointercapture', endStroke);
+  surface.addEventListener('pointerenter', event => {
+    if (activePointer === null) updateMobHover(event);
+  });
+  surface.addEventListener('pointerleave', () => {
+    if (!mobDrag) dropTarget.hidden = true;
+  });
+  surface.addEventListener('lostpointercapture', event => {
+    if (event.pointerId === activePointer) endStroke();
+  });
   surface.addEventListener('pointercancel', endStroke);
   window.addEventListener('pointerup', event => {
     if (event.pointerId !== activePointer) return;
@@ -425,6 +443,7 @@
       }
     }
     endStroke();
+    updateMobHover(event);
   });
   window.addEventListener('blur', endStroke);
   document.addEventListener('visibilitychange', () => { if (document.hidden) endStroke(); });
