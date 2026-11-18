@@ -154,6 +154,13 @@
     cursor.style.setProperty('--cursor-y', keyboardCell.y);
   }
 
+  const grid = document.getElementById('map-grid');
+  const gridButton = document.getElementById('toggle-grid');
+  gridButton.addEventListener('click', () => {
+    grid.hidden = !grid.hidden;
+    gridButton.setAttribute('aria-pressed', String(!grid.hidden));
+  });
+
   for (const button of buttons) {
     button.addEventListener('click', () => {
       endStroke();

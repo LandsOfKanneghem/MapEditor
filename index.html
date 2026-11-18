@@ -11,12 +11,18 @@
 </head>
 <body>
   <main class="editor">
-    <section class="map-panel" aria-labelledby="map-title">
-      <h1 id="map-title">Карта <span>12 × 12</span></h1>
+    <div class="editor-toolbar" role="toolbar" aria-label="Панель инструментов">
+      <button type="button" id="toggle-grid" class="toolbar-button" aria-label="Сетка" aria-pressed="true" aria-controls="map-grid" title="Показать/скрыть сетку">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M6 3v18M12 3v18M18 3v18M3 6h18M3 12h18M3 18h18"/>
+        </svg>
+      </button>
+    </div>
+    <section class="map-panel" aria-label="Карта">
       <div class="map-viewport">
         <div class="map-surface" aria-busy="true">
-          <canvas id="map" width="576" height="576" tabindex="0" aria-label="Карта 12 на 12 клеток" aria-describedby="paint-help keyboard-help"></canvas>
-          <div class="map-grid" aria-hidden="true"></div>
+          <canvas id="map" width="576" height="576" tabindex="0" aria-label="Карта 12 на 12 клеток" aria-describedby="keyboard-help"></canvas>
+          <div id="map-grid" class="map-grid" aria-hidden="true"></div>
           <div id="keyboard-cursor" class="keyboard-cursor" aria-hidden="true"></div>
         </div>
       </div>
@@ -26,27 +32,25 @@
     <aside class="terrain-panel" aria-labelledby="terrain-title">
       <h2 id="terrain-title">Террейн</h2>
       <div class="terrain-list" role="group" aria-label="Выбор террейна">
-        <button type="button" class="terrain-option" data-terrain="grass" aria-pressed="true" disabled>
-          <span class="terrain-swatch terrain-swatch--grass" aria-hidden="true"></span><span>Трава</span>
+        <button type="button" class="terrain-option" data-terrain="grass" aria-label="Трава" title="Трава" aria-pressed="true" disabled>
+          <span class="terrain-swatch terrain-swatch--grass" aria-hidden="true"></span>
         </button>
-        <button type="button" class="terrain-option" data-terrain="sand" aria-pressed="false" disabled>
-          <span class="terrain-swatch terrain-swatch--sand" aria-hidden="true"></span><span>Песок</span>
+        <button type="button" class="terrain-option" data-terrain="sand" aria-label="Песок" title="Песок" aria-pressed="false" disabled>
+          <span class="terrain-swatch terrain-swatch--sand" aria-hidden="true"></span>
         </button>
-        <button type="button" class="terrain-option" data-terrain="dirt" aria-pressed="false" disabled>
-          <span class="terrain-swatch terrain-swatch--dirt" aria-hidden="true"></span><span>Грязь</span>
+        <button type="button" class="terrain-option" data-terrain="dirt" aria-label="Грязь" title="Грязь" aria-pressed="false" disabled>
+          <span class="terrain-swatch terrain-swatch--dirt" aria-hidden="true"></span>
         </button>
-        <button type="button" class="terrain-option" data-terrain="swamp" aria-pressed="false" disabled>
-          <span class="terrain-swatch terrain-swatch--swamp" aria-hidden="true"></span><span>Болото</span>
+        <button type="button" class="terrain-option" data-terrain="swamp" aria-label="Болото" title="Болото" aria-pressed="false" disabled>
+          <span class="terrain-swatch terrain-swatch--swamp" aria-hidden="true"></span>
         </button>
-        <button type="button" class="terrain-option" data-terrain="shallow-water" aria-pressed="false" disabled>
-          <span class="terrain-swatch terrain-swatch--shallow-water" aria-hidden="true"></span><span>Мелководье</span>
+        <button type="button" class="terrain-option" data-terrain="shallow-water" aria-label="Мелководье" title="Мелководье" aria-pressed="false" disabled>
+          <span class="terrain-swatch terrain-swatch--shallow-water" aria-hidden="true"></span>
         </button>
-        <button type="button" class="terrain-option" data-terrain="deep-water" aria-pressed="false" disabled>
-          <span class="terrain-swatch terrain-swatch--water" aria-hidden="true"></span><span>Глубоководье</span>
+        <button type="button" class="terrain-option" data-terrain="deep-water" aria-label="Глубоководье" title="Глубоководье" aria-pressed="false" disabled>
+          <span class="terrain-swatch terrain-swatch--water" aria-hidden="true"></span>
         </button>
       </div>
-      <p id="paint-help">Выберите террейн. Зажмите левую кнопку мыши на карте и ведите по клеткам.</p>
-      <p>При рисовании воды весь соединённый водоём принимает выбранный тип. Клетки соединяются по сторонам.</p>
     </aside>
   </main>
 </body>

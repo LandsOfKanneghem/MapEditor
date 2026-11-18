@@ -11,14 +11,29 @@
 body { margin: 0; padding: 24px; }
 .editor {
   display: grid;
-  grid-template-columns: minmax(0, calc(var(--map-size) + 2px)) 200px;
-  gap: 24px;
+  grid-template-columns: minmax(0, calc(var(--map-size) + 2px)) 220px;
+  gap: 8px 24px;
   align-items: start;
-  max-width: 802px;
+  max-width: 822px;
   margin-inline: auto;
 }
-h1, h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
-h1 span { margin-left: 8px; font-size: 13px; font-weight: 400; color: #aaa79d; }
+h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
+.editor-toolbar { grid-column: 1 / -1; display: flex; align-items: center; }
+.toolbar-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 3px;
+  border: 1px solid #55554f;
+  border-radius: 2px;
+  background: #30312e;
+  color: inherit;
+  cursor: pointer;
+}
+.toolbar-button svg { display: block; width: 24px; height: 24px; }
+.toolbar-button[aria-pressed="true"] { border-color: #82bddb; background: #3d5665; }
+.toolbar-button:hover { filter: brightness(1.15); }
 .map-panel { min-width: 0; }
 .map-viewport { max-width: 100%; overflow: auto; border: 1px solid #615b48; }
 .map-surface { position: relative; width: var(--map-size); height: var(--map-size); background: #465530; }
@@ -43,27 +58,24 @@ h1 span { margin-left: 8px; font-size: 13px; font-weight: 400; color: #aaa79d; }
   pointer-events: none;
 }
 #map:focus-visible ~ .keyboard-cursor { display: block; }
-.terrain-list { display: grid; gap: 8px; }
+.terrain-list { display: grid; grid-template-columns: repeat(4, 52px); gap: 4px; }
 .terrain-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 9px;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 1px;
   border: 1px solid #55554f;
   border-radius: 4px;
   background: #30312e;
   color: inherit;
-  font: inherit;
-  font-size: 14px;
-  text-align: left;
   cursor: pointer;
 }
 .terrain-option:hover:not(:disabled) { background: #3a3c36; }
 .terrain-option[aria-pressed="true"] { border-color: var(--accent); background: #45402e; box-shadow: inset 0 0 0 1px var(--accent); }
-.terrain-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.terrain-option:focus-visible, .toolbar-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .terrain-option:disabled { opacity: .5; cursor: wait; }
-.terrain-swatch { display: block; flex: 0 0 48px; width: 48px; height: 48px; image-rendering: pixelated; background: url('assets/terrain/base.png') 0 0 / 144px 288px; }
+.terrain-swatch { display: block; width: 48px; height: 48px; image-rendering: pixelated; background: url('assets/terrain/base.png') 0 0 / 144px 288px; }
 .terrain-swatch--sand { background-position: 0 -48px; }
 .terrain-swatch--water { background-position: 0 -96px; }
 .terrain-swatch--dirt { background-position: 0 -144px; }
@@ -72,11 +84,10 @@ h1 span { margin-left: 8px; font-size: 13px; font-weight: 400; color: #aaa79d; }
 p { margin: 14px 0 0; color: #b8b5ab; font-size: 13px; line-height: 1.5; }
 #status { min-height: 20px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-@media (max-width: 850px) {
+@media (max-width: 870px) {
   body { padding: 16px; }
   .editor { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .terrain-panel { grid-row: 1; }
-  .terrain-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .terrain-option { flex-direction: column; gap: 6px; padding: 8px 4px; font-size: 12px; text-align: center; overflow-wrap: anywhere; }
-  #paint-help { margin-top: 10px; }
+  .editor-toolbar { grid-row: 1; }
+  .terrain-panel { grid-row: 2; }
+  .map-panel { grid-row: 3; }
 }
