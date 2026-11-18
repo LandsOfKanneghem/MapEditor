@@ -39,6 +39,11 @@
           <path d="M5 18c0-3 4-8 7-8s7 5 7 8c0 5-5 2-7 2s-7 3-7-2Z"/>
         </svg>
       </button>
+      <button type="button" class="toolbar-button" data-mode="objects" aria-label="Непроходимые объекты" title="Непроходимые объекты" aria-pressed="false" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+          <path d="m3 6 9-3 9 3v13l-9 3-9-3ZM3 6l9 3 9-3M12 9v13M5 10l5 9M5 18l5-7M14 11l5 7M14 19l5-9"/>
+        </svg>
+      </button>
     </div>
     <input type="file" id="map-file" accept=".json,application/json" hidden>
     <section class="map-panel" aria-label="Карта">
@@ -46,13 +51,14 @@
         <div class="map-surface" data-mode="terrain" aria-busy="true">
           <canvas id="map" width="576" height="576" tabindex="0" aria-label="Карта 12 на 12 клеток" aria-describedby="keyboard-help"></canvas>
           <div id="map-grid" class="map-grid" aria-hidden="true"></div>
+          <div id="object-layer" class="object-layer"></div>
           <div id="mob-layer" class="mob-layer"></div>
           <div id="mob-drop-target" class="mob-drop-target" hidden aria-hidden="true"></div>
           <div id="keyboard-cursor" class="keyboard-cursor" aria-hidden="true"></div>
         </div>
       </div>
       <p id="status" role="status">Загрузка тайлов…</p>
-      <span id="keyboard-help" class="sr-only">С клавиатуры: стрелки выбирают клетку, пробел или Enter применяет выбранный террейн или добавляет выбранного моба.</span>
+      <span id="keyboard-help" class="sr-only">С клавиатуры: стрелки выбирают клетку, пробел или Enter применяет выбранный террейн, моба или объект.</span>
     </section>
     <aside class="terrain-panel" aria-labelledby="terrain-title">
       <h2 id="terrain-title">Террейн</h2>
@@ -82,6 +88,11 @@
         </button>
         <button type="button" class="terrain-option" data-mob="hill-giant" aria-label="Холмовой великан" title="Холмовой великан" aria-pressed="false" disabled>
           <img class="mob-swatch" src="assets/mobs/hill-giant.png" alt="" width="48" height="48" draggable="false">
+        </button>
+      </div>
+      <div id="object-palette" class="terrain-list" role="group" aria-label="Выбор препятствия" hidden>
+        <button type="button" class="terrain-option" data-object="crate" aria-label="Ящик" title="Ящик — непроходимое препятствие" aria-pressed="true" disabled>
+          <img class="object-swatch" src="assets/objects/crate.png" alt="" width="48" height="48" draggable="false">
         </button>
       </div>
     </aside>

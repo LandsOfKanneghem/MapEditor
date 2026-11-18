@@ -10,6 +10,9 @@
     wolf: { name: 'Волк', src: 'assets/mobs/wolf.png', padding: { top: 36, right: 3, bottom: 4, left: 3 } },
     'hill-giant': { name: 'Холмовой великан', src: 'assets/mobs/hill-giant.png', padding: { top: 4, right: 2, bottom: 4, left: 2 } }
   });
+  const OBJECT_TYPES = Object.freeze({
+    crate: { name: 'Ящик', src: 'assets/objects/crate.png', blocking: true, interactive: false }
+  });
   const landLayers = [
     { terrain: TERRAIN.dirt, image: 'dirt', level: 1 },
     { terrain: TERRAIN.swamp, image: 'swamp', level: 2 },
@@ -23,16 +26,20 @@
   const neighbors = [[0, -1, 1], [1, -1, 2], [1, 0, 4], [1, 1, 8], [0, 1, 16], [-1, 1, 32], [-1, 0, 64], [-1, -1, 128]];
   const map = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(TERRAIN.grass));
   const mobs = [];
+  const objects = [];
   const canvas = document.getElementById('map');
   const context = canvas.getContext('2d');
   const surface = document.querySelector('.map-surface');
   const buttons = [...document.querySelectorAll('[data-terrain]')];
   const mobButtons = [...document.querySelectorAll('[data-mob]')];
+  const objectButtons = [...document.querySelectorAll('[data-object]')];
   const modeButtons = [...document.querySelectorAll('[data-mode].toolbar-button')];
   const terrainPalette = document.getElementById('terrain-palette');
   const mobPalette = document.getElementById('mob-palette');
+  const objectPalette = document.getElementById('object-palette');
   const paletteTitle = document.getElementById('terrain-title');
   const mobLayer = document.getElementById('mob-layer');
+  const objectLayer = document.getElementById('object-layer');
   const dropTarget = document.getElementById('mob-drop-target');
   const status = document.getElementById('status');
   const cursor = document.getElementById('keyboard-cursor');
@@ -42,6 +49,7 @@
   const images = {};
   let selectedTerrain = TERRAIN.grass;
   let selectedMob = 'wolf';
+  let selectedObject = 'crate';
   let editorMode = 'terrain';
   let mobDrag = null;
   let ready = false;
@@ -104,6 +112,39 @@
     return mobs.find(mob => mob !== except && mob.x === cell.x && mob.y === cell.y);
   }
 
+  function objectAt(cell) {
+    return objects.find(object => object.x === cell.x && object.y === cell.y);
+  }
+
+  function isOccupied(cell, exceptMob = null) {
+    return Boolean(mobAt(cell, exceptMob) || objectAt(cell));
+  }
+
+  function renderObjects() {
+    const elements = objects.map(object => {
+      if (!object.element) {
+        const image = document.createElement('img');
+        image.className = 'map-object';
+        image.src = OBJECT_TYPES[object.type].src;
+        image.alt = OBJECT_TYPES[object.type].name;
+        image.draggable = false;
+        object.element = image;
+      }
+      object.element.style.left = `${object.x * TILE_SIZE}px`;
+      object.element.style.top = `${object.y * TILE_SIZE}px`;
+      object.element.dataset.x = object.x;
+      object.element.dataset.y = object.y;
+      return object.element;
+    });
+    objectLayer.replaceChildren(...elements);
+  }
+
+  function placeObject(cell) {
+    if (isOccupied(cell)) return;
+    objects.push({ type: selectedObject, x: cell.x, y: cell.y });
+    renderObjects();
+  }
+
   function renderMobs() {
     const elements = [...mobs].sort((a, b) => a.y - b.y || a.x - b.x).map(mob => {
       const template = MOB_TYPES[mob.type];
@@ -131,7 +172,7 @@
   }
 
   function placeMob(cell) {
-    if (mobAt(cell)) return null;
+    if (isOccupied(cell)) return null;
     const mob = { type: selectedMob, x: cell.x, y: cell.y };
     mobs.push(mob);
     renderMobs();
@@ -170,18 +211,18 @@
     return cellFromPoint(pointFromPointer(event));
   }
 
-  function showMobTarget(cell, except = null) {
+  function showPlacementTarget(cell, except = null) {
     dropTarget.hidden = !cell;
     if (!cell) return;
     dropTarget.style.left = `${cell.x * TILE_SIZE}px`;
     dropTarget.style.top = `${cell.y * TILE_SIZE}px`;
-    dropTarget.dataset.valid = String(!mobAt(cell, except));
+    dropTarget.dataset.valid = String(!isOccupied(cell, except));
   }
 
-  function updateMobHover(event) {
-    if (!ready || editorMode !== 'mobs' || !event.isPrimary || event.pointerType === 'touch') return;
+  function updatePlacementHover(event) {
+    if (!ready || editorMode === 'terrain' || !event.isPrimary || event.pointerType === 'touch') return;
     const hovered = mobs.find(mob => mob.element === event.target);
-    showMobTarget(hovered ? { x: hovered.x, y: hovered.y } : cellFromPointer(event));
+    showPlacementTarget(hovered ? { x: hovered.x, y: hovered.y } : cellFromPointer(event));
   }
 
   function updateMobDrag(event) {
@@ -193,7 +234,7 @@
       y: (mobDrag.mob.y + .5) * TILE_SIZE + dy
     });
     const inside = cellFromPoint(point) !== null && target !== null;
-    showMobTarget(inside ? target : null, mobDrag.mob);
+    showPlacementTarget(inside ? target : null, mobDrag.mob);
     return inside ? target : null;
   }
 
@@ -261,7 +302,7 @@
   }
 
   function readMapData(data) {
-    if (data?.format !== 'kanneghem-map' || (data.version !== 1 && data.version !== 2)) {
+    if (data?.format !== 'kanneghem-map' || ![1, 2, 3].includes(data.version)) {
       throw new Error('Неподдерживаемый формат или версия карты.');
     }
     if (data.width !== COLUMNS || data.height !== ROWS) {
@@ -302,7 +343,23 @@
       occupied.add(position);
       return { type: mob.type, x: mob.x, y: mob.y };
     });
-    return { tiles, mobs: loadedMobs };
+    const savedObjects = data.version < 3 ? [] : data.objects;
+    if (!Array.isArray(savedObjects) || savedObjects.length > COLUMNS * ROWS) {
+      throw new Error('Неверный список объектов карты.');
+    }
+    const loadedObjects = savedObjects.map(object => {
+      if (!object || typeof object.type !== 'string' || !Object.hasOwn(OBJECT_TYPES, object.type) ||
+          !Number.isInteger(object.x) || !Number.isInteger(object.y) ||
+          object.x < 0 || object.x >= COLUMNS || object.y < 0 || object.y >= ROWS ||
+          object.blocking !== true || object.interactive !== false) {
+        throw new Error('В карте указан неизвестный объект или неверные параметры препятствия.');
+      }
+      const position = object.y * COLUMNS + object.x;
+      if (occupied.has(position)) throw new Error('Клетка объекта уже занята мобом или другим объектом.');
+      occupied.add(position);
+      return { type: object.type, x: object.x, y: object.y };
+    });
+    return { tiles, mobs: loadedMobs, objects: loadedObjects };
   }
 
   saveButton.addEventListener('click', () => {
@@ -310,11 +367,14 @@
     endStroke();
     const data = {
       format: 'kanneghem-map',
-      version: 2,
+      version: 3,
       width: COLUMNS,
       height: ROWS,
       tiles: map.map(row => row.map(terrain => terrainNames[terrain])),
-      mobs: mobs.map(({ type, x, y }) => ({ type, x, y }))
+      mobs: mobs.map(({ type, x, y }) => ({ type, x, y })),
+      objects: objects.map(({ type, x, y }) => ({
+        type, x, y, blocking: OBJECT_TYPES[type].blocking, interactive: OBJECT_TYPES[type].interactive
+      }))
     };
     const blob = new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -345,7 +405,9 @@
       endStroke();
       map.splice(0, ROWS, ...loaded.tiles);
       mobs.splice(0, mobs.length, ...loaded.mobs);
+      objects.splice(0, objects.length, ...loaded.objects);
       renderMap();
+      renderObjects();
       renderMobs();
       status.textContent = 'Карта загружена.';
     } catch (error) {
@@ -373,7 +435,8 @@
       surface.dataset.mode = editorMode;
       terrainPalette.hidden = editorMode !== 'terrain';
       mobPalette.hidden = editorMode !== 'mobs';
-      paletteTitle.textContent = editorMode === 'terrain' ? 'Террейн' : 'Мобы';
+      objectPalette.hidden = editorMode !== 'objects';
+      paletteTitle.textContent = { terrain: 'Террейн', mobs: 'Мобы', objects: 'Объекты' }[editorMode];
       for (const item of modeButtons) item.setAttribute('aria-pressed', String(item === button));
     });
   }
@@ -383,6 +446,14 @@
       endStroke();
       selectedMob = button.dataset.mob;
       for (const item of mobButtons) item.setAttribute('aria-pressed', String(item === button));
+    });
+  }
+
+  for (const button of objectButtons) {
+    button.addEventListener('click', () => {
+      endStroke();
+      selectedObject = button.dataset.object;
+      for (const item of objectButtons) item.setAttribute('aria-pressed', String(item === button));
     });
   }
 
@@ -403,8 +474,17 @@
     surface.setPointerCapture(event.pointerId);
     if (editorMode === 'terrain') {
       paintPointer(event);
+    } else if (editorMode === 'objects') {
+      placeObject(cell);
+      showPlacementTarget(cell);
     } else {
       const mob = mobs.find(item => item.element === event.target) ?? mobAt(cell) ?? placeMob(cell);
+      if (!mob) {
+        endStroke();
+        showPlacementTarget(cell);
+        event.preventDefault();
+        return;
+      }
       mobDrag = { mob, start: pointFromPointer(event) };
       mob.element.classList.add('dragging');
       mob.element.style.zIndex = ROWS + 1;
@@ -416,15 +496,16 @@
     event.preventDefault();
   });
   surface.addEventListener('pointermove', event => {
-    if (activePointer === null) { updateMobHover(event); return; }
+    if (activePointer === null) { updatePlacementHover(event); return; }
     if (event.pointerId !== activePointer) return;
     if (!(event.buttons & 1)) { endStroke(); return; }
     if (mobDrag) { updateMobDrag(event); return; }
+    if (editorMode !== 'terrain') { updatePlacementHover(event); return; }
     const samples = event.getCoalescedEvents?.() ?? [];
     for (const sample of samples.length ? samples : [event]) paintPointer(sample);
   });
   surface.addEventListener('pointerenter', event => {
-    if (activePointer === null) updateMobHover(event);
+    if (activePointer === null) updatePlacementHover(event);
   });
   surface.addEventListener('pointerleave', () => {
     if (!mobDrag) dropTarget.hidden = true;
@@ -437,13 +518,13 @@
     if (event.pointerId !== activePointer) return;
     if (mobDrag) {
       const target = updateMobDrag(event);
-      if (target && !mobAt(target, mobDrag.mob)) {
+      if (target && !isOccupied(target, mobDrag.mob)) {
         mobDrag.mob.x = target.x;
         mobDrag.mob.y = target.y;
       }
     }
     endStroke();
-    updateMobHover(event);
+    updatePlacementHover(event);
   });
   window.addEventListener('blur', endStroke);
   document.addEventListener('visibilitychange', () => { if (document.hidden) endStroke(); });
@@ -457,7 +538,8 @@
       updateKeyboardCursor();
     } else if (event.key === ' ' || event.key === 'Enter') {
       if (editorMode === 'terrain') paintLine(keyboardCell, keyboardCell);
-      else placeMob(keyboardCell);
+      else if (editorMode === 'mobs') placeMob(keyboardCell);
+      else placeObject(keyboardCell);
     }
     else return;
     event.preventDefault();
@@ -466,7 +548,8 @@
   async function loadTiles() {
     const assets = [
       ...['base', 'sand', 'water', 'dirt', 'swamp', 'shallow-water'].map(name => [name, `assets/terrain/${name}.png`]),
-      ...Object.entries(MOB_TYPES).map(([name, template]) => [name, template.src])
+      ...Object.entries(MOB_TYPES).map(([name, template]) => [name, template.src]),
+      ...Object.entries(OBJECT_TYPES).map(([name, template]) => [name, template.src])
     ];
     await Promise.all(assets.map(([name, src]) => new Promise((resolve, reject) => {
       const image = new Image();
@@ -479,7 +562,7 @@
     ready = true;
     surface.setAttribute('aria-busy', 'false');
     for (const button of buttons) button.disabled = false;
-    for (const button of [...modeButtons, ...mobButtons]) button.disabled = false;
+    for (const button of [...modeButtons, ...mobButtons, ...objectButtons]) button.disabled = false;
     saveButton.disabled = false;
     loadButton.disabled = false;
     status.textContent = '';

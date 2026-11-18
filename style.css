@@ -49,9 +49,10 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
   background-size: var(--cell-size) var(--cell-size);
   background-position: -2px -2px;
 }
-.mob-layer { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
+.object-layer, .mob-layer { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
+.map-object { position: absolute; width: var(--cell-size); height: var(--cell-size); image-rendering: pixelated; pointer-events: none; user-select: none; }
 .map-mob { position: absolute; width: 60px; height: 72px; image-rendering: pixelated; pointer-events: none; user-select: none; }
-.map-surface[data-mode="mobs"] #map { cursor: copy; }
+.map-surface[data-mode="mobs"] #map, .map-surface[data-mode="objects"] #map { cursor: copy; }
 .map-surface[data-mode="mobs"] .map-mob { pointer-events: auto; cursor: grab; }
 .map-surface.dragging #map, .map-surface[data-mode="mobs"] .map-mob.dragging { cursor: grabbing; }
 .mob-drop-target { position: absolute; width: var(--cell-size); height: var(--cell-size); z-index: 3; border: 2px solid var(--accent); pointer-events: none; }
@@ -88,7 +89,7 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
 .terrain-option:focus-visible, .toolbar-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .terrain-option:disabled { opacity: .5; cursor: wait; }
 .terrain-swatch { display: block; width: 48px; height: 48px; image-rendering: pixelated; background: url('assets/terrain/base.png') 0 0 / 144px 288px; }
-.mob-swatch { display: block; width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
+.mob-swatch, .object-swatch { display: block; width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
 .terrain-swatch--sand { background-position: 0 -48px; }
 .terrain-swatch--water { background-position: 0 -96px; }
 .terrain-swatch--dirt { background-position: 0 -144px; }
