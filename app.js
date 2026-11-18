@@ -4,7 +4,15 @@
   const COLUMNS = 12;
   const ROWS = 12;
   const TILE_SIZE = 48;
-  const TERRAIN = Object.freeze({ grass: 0, sand: 1, 'deep-water': 2 });
+  const TERRAIN = Object.freeze({ grass: 0, sand: 1, 'deep-water': 2, dirt: 3, swamp: 4, 'shallow-water': 5 });
+  const landLayers = [
+    { terrain: TERRAIN.dirt, image: 'dirt', level: 1 },
+    { terrain: TERRAIN.swamp, image: 'swamp', level: 2 },
+    { terrain: TERRAIN.sand, image: 'sand', level: 3 }
+  ];
+  const terrainLevels = [0, 3, 4, 1, 2, 4];
+  const waterNeighbors = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+  const isWater = terrain => terrain === TERRAIN['deep-water'] || terrain === TERRAIN['shallow-water'];
   const MASKS = [0, 1, 4, 5, 7, 16, 17, 20, 21, 23, 28, 29, 31, 64, 65, 68, 69, 71, 80, 81, 84, 85, 87, 92, 93, 95, 112, 113, 116, 117, 119, 124, 125, 127, 193, 197, 199, 209, 213, 215, 221, 223, 241, 245, 247, 253, 255];
   const maskIndex = new Map(MASKS.map((mask, index) => [mask, index]));
   const neighbors = [[0, -1, 1], [1, -1, 2], [1, 0, 4], [1, 1, 8], [0, 1, 16], [-1, 1, 32], [-1, 0, 64], [-1, -1, 128]];
@@ -29,12 +37,12 @@
     return mask;
   }
 
-  function terrainMask(x, y, layer) {
+  function terrainMask(x, y, level) {
     let mask = 0;
     for (const [dx, dy, bit] of neighbors) {
       // Continue the edge terrain visually; no cells exist outside the map.
       const terrain = map[Math.max(0, Math.min(ROWS - 1, y + dy))][Math.max(0, Math.min(COLUMNS - 1, x + dx))];
-      if (layer === 'sand' ? terrain !== TERRAIN.grass : terrain === TERRAIN['deep-water']) mask |= bit;
+      if (terrainLevels[terrain] >= level) mask |= bit;
     }
     return normalizeMask(mask);
   }
@@ -54,16 +62,18 @@
     const terrain = map[y][x];
     const variant = (((x * 73856093) ^ (y * 19349663)) >>> 0) % 3;
     drawBase(TERRAIN.grass, variant, x, y);
-    // The sand underlay connects sand and water into one region.
-    if (terrain !== TERRAIN.grass) {
-      const mask = terrainMask(x, y, 'sand');
-      if (mask === 255) drawBase(TERRAIN.sand, variant, x, y);
-      else drawOverlay('sand', mask, x, y);
+    // Matching land masks let each upper layer cover the lower ones cleanly.
+    // Sand remains the last land layer, preserving the beach around all water.
+    for (const layer of landLayers) {
+      if (terrainLevels[terrain] < layer.level) continue;
+      const mask = terrainMask(x, y, layer.level);
+      if (mask === 255) drawBase(layer.terrain, variant, x, y);
+      else drawOverlay(layer.image, mask, x, y);
     }
-    if (terrain === TERRAIN['deep-water']) {
-      const mask = terrainMask(x, y, 'water');
-      if (mask === 255) drawBase(TERRAIN['deep-water'], variant, x, y);
-      else drawOverlay('water', mask, x, y);
+    if (isWater(terrain)) {
+      const mask = terrainMask(x, y, 4);
+      if (mask === 255) drawBase(terrain, variant, x, y);
+      else drawOverlay(terrain === TERRAIN['deep-water'] ? 'water' : 'shallow-water', mask, x, y);
     }
   }
 
@@ -81,6 +91,38 @@
     return x >= 0 && x < COLUMNS && y >= 0 && y < ROWS ? { x, y } : null;
   }
 
+  function setTerrain(x, y, terrain, dirty) {
+    if (map[y][x] === terrain) return;
+    map[y][x] = terrain;
+    for (let yy = Math.max(0, y - 1); yy <= Math.min(ROWS - 1, y + 1); yy++) {
+      for (let xx = Math.max(0, x - 1); xx <= Math.min(COLUMNS - 1, x + 1); xx++) dirty.add(yy * COLUMNS + xx);
+    }
+  }
+
+  function paintCell(x, y, dirty) {
+    if (map[y][x] === selectedTerrain) return;
+    if (!isWater(selectedTerrain)) {
+      setTerrain(x, y, selectedTerrain, dirty);
+      return;
+    }
+    // Convert the whole water component, including any bodies joined by this cell.
+    // Only shared sides connect water; touching corners do not.
+    const queue = [[x, y]];
+    const visited = new Set([y * COLUMNS + x]);
+    for (let i = 0; i < queue.length; i++) {
+      const [xx, yy] = queue[i];
+      setTerrain(xx, yy, selectedTerrain, dirty);
+      for (const [dx, dy] of waterNeighbors) {
+        const nx = xx + dx, ny = yy + dy;
+        if (nx < 0 || nx >= COLUMNS || ny < 0 || ny >= ROWS || !isWater(map[ny][nx])) continue;
+        const index = ny * COLUMNS + nx;
+        if (visited.has(index)) continue;
+        visited.add(index);
+        queue.push([nx, ny]);
+      }
+    }
+  }
+
   function paintLine(from, to) {
     const dirty = new Set();
     let x = from.x, y = from.y;
@@ -89,12 +131,7 @@
     let error = dx + dy;
     // Connect pointer samples so fast strokes cannot leave unpainted gaps.
     while (true) {
-      if (map[y][x] !== selectedTerrain) {
-        map[y][x] = selectedTerrain;
-        for (let yy = Math.max(0, y - 1); yy <= Math.min(ROWS - 1, y + 1); yy++) {
-          for (let xx = Math.max(0, x - 1); xx <= Math.min(COLUMNS - 1, x + 1); xx++) dirty.add(yy * COLUMNS + xx);
-        }
-      }
+      paintCell(x, y, dirty);
       if (x === to.x && y === to.y) break;
       const doubled = 2 * error;
       if (doubled >= dy) { error += dy; x += sx; }
@@ -158,7 +195,7 @@
   });
 
   async function loadTiles() {
-    await Promise.all(['base', 'sand', 'water'].map(name => new Promise((resolve, reject) => {
+    await Promise.all(['base', 'sand', 'water', 'dirt', 'swamp', 'shallow-water'].map(name => new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = () => { images[name] = image; resolve(); };
       image.onerror = () => reject(new Error(`Cannot load ${name} tiles`));
