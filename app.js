@@ -5,6 +5,7 @@
   const ROWS = 12;
   const TILE_SIZE = 48;
   const TERRAIN = Object.freeze({ grass: 0, sand: 1, 'deep-water': 2, dirt: 3, swamp: 4, 'shallow-water': 5 });
+  const terrainNames = Object.fromEntries(Object.entries(TERRAIN).map(([name, id]) => [id, name]));
   const landLayers = [
     { terrain: TERRAIN.dirt, image: 'dirt', level: 1 },
     { terrain: TERRAIN.swamp, image: 'swamp', level: 2 },
@@ -23,6 +24,9 @@
   const buttons = [...document.querySelectorAll('[data-terrain]')];
   const status = document.getElementById('status');
   const cursor = document.getElementById('keyboard-cursor');
+  const saveButton = document.getElementById('save-map');
+  const loadButton = document.getElementById('load-map');
+  const fileInput = document.getElementById('map-file');
   const images = {};
   let selectedTerrain = TERRAIN.grass;
   let ready = false;
@@ -75,6 +79,10 @@
       if (mask === 255) drawBase(terrain, variant, x, y);
       else drawOverlay(terrain === TERRAIN['deep-water'] ? 'water' : 'shallow-water', mask, x, y);
     }
+  }
+
+  function renderMap() {
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLUMNS; x++) drawCell(x, y);
   }
 
   function endStroke() {
@@ -154,6 +162,86 @@
     cursor.style.setProperty('--cursor-y', keyboardCell.y);
   }
 
+  function readMapData(data) {
+    if (data?.format !== 'kanneghem-map' || data.version !== 1) {
+      throw new Error('Неподдерживаемый формат или версия карты.');
+    }
+    if (data.width !== COLUMNS || data.height !== ROWS) {
+      throw new Error(`Размер карты должен быть ${COLUMNS}×${ROWS}.`);
+    }
+    if (!Array.isArray(data.tiles) || data.tiles.length !== ROWS ||
+        data.tiles.some(row => !Array.isArray(row) || row.length !== COLUMNS)) {
+      throw new Error('Неверное количество строк или клеток карты.');
+    }
+    const tiles = data.tiles.map(row => row.map(name => {
+      if (typeof name !== 'string' || !Object.hasOwn(TERRAIN, name)) {
+        throw new Error('В карте указан неизвестный тип поверхности.');
+      }
+      return TERRAIN[name];
+    }));
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLUMNS; x++) {
+        const terrain = tiles[y][x];
+        const right = tiles[y][x + 1], below = tiles[y + 1]?.[x];
+        if (isWater(terrain) && ((isWater(right) && right !== terrain) || (isWater(below) && below !== terrain))) {
+          throw new Error('В одном водоёме не могут смешиваться мелководье и глубоководье.');
+        }
+      }
+    }
+    return tiles;
+  }
+
+  saveButton.addEventListener('click', () => {
+    if (!ready) return;
+    endStroke();
+    const data = {
+      format: 'kanneghem-map',
+      version: 1,
+      width: COLUMNS,
+      height: ROWS,
+      tiles: map.map(row => row.map(terrain => terrainNames[terrain]))
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `map-${COLUMNS}x${ROWS}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    status.textContent = 'Карта сохранена.';
+  });
+
+  loadButton.addEventListener('click', () => {
+    endStroke();
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
+    if (!ready || !file || loadButton.disabled) return;
+    endStroke();
+    loadButton.disabled = true;
+    saveButton.disabled = true;
+    try {
+      const tiles = readMapData(JSON.parse(await file.text()));
+      // Validate the entire file before replacing the current map.
+      endStroke();
+      map.splice(0, ROWS, ...tiles);
+      renderMap();
+      status.textContent = 'Карта загружена.';
+    } catch (error) {
+      status.textContent = error instanceof SyntaxError
+        ? 'Не удалось загрузить карту: файл не содержит корректный JSON.'
+        : `Не удалось загрузить карту: ${error.message}`;
+    } finally {
+      fileInput.value = '';
+      loadButton.disabled = false;
+      saveButton.disabled = false;
+    }
+  });
+
   const grid = document.getElementById('map-grid');
   const gridButton = document.getElementById('toggle-grid');
   gridButton.addEventListener('click', () => {
@@ -209,10 +297,12 @@
       image.src = `assets/terrain/${name}.png`;
     })));
     context.imageSmoothingEnabled = false;
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLUMNS; x++) drawCell(x, y);
+    renderMap();
     ready = true;
     surface.setAttribute('aria-busy', 'false');
     for (const button of buttons) button.disabled = false;
+    saveButton.disabled = false;
+    loadButton.disabled = false;
     status.textContent = '';
   }
 

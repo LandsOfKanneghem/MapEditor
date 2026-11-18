@@ -18,7 +18,7 @@ body { margin: 0; padding: 24px; }
   margin-inline: auto;
 }
 h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
-.editor-toolbar { grid-column: 1 / -1; display: flex; align-items: center; }
+.editor-toolbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 4px; }
 .toolbar-button {
   display: grid;
   place-items: center;
@@ -33,7 +33,8 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
 }
 .toolbar-button svg { display: block; width: 24px; height: 24px; }
 .toolbar-button[aria-pressed="true"] { border-color: #82bddb; background: #3d5665; }
-.toolbar-button:hover { filter: brightness(1.15); }
+.toolbar-button:hover:not(:disabled) { filter: brightness(1.15); }
+.toolbar-button:disabled { opacity: .5; cursor: wait; }
 .map-panel { min-width: 0; }
 .map-viewport { max-width: 100%; overflow: auto; border: 1px solid #615b48; }
 .map-surface { position: relative; width: var(--map-size); height: var(--map-size); background: #465530; }

@@ -12,12 +12,24 @@
 <body>
   <main class="editor">
     <div class="editor-toolbar" role="toolbar" aria-label="Панель инструментов">
+      <button type="button" id="load-map" class="toolbar-button" aria-label="Загрузить карту" title="Загрузить карту" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+          <path d="M3 19V5h7l2 3h9v4M3 19l3-9h16l-3 9Z"/>
+        </svg>
+      </button>
+      <button type="button" id="save-map" class="toolbar-button" aria-label="Сохранить карту" title="Сохранить карту" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+          <path d="M4 3h13l4 4v14H3V3Z"/>
+          <path d="M7 3v6h10V3M7 21v-8h10v8M14 4v3"/>
+        </svg>
+      </button>
       <button type="button" id="toggle-grid" class="toolbar-button" aria-label="Сетка" aria-pressed="true" aria-controls="map-grid" title="Показать/скрыть сетку">
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M6 3v18M12 3v18M18 3v18M3 6h18M3 12h18M3 18h18"/>
         </svg>
       </button>
     </div>
+    <input type="file" id="map-file" accept=".json,application/json" hidden>
     <section class="map-panel" aria-label="Карта">
       <div class="map-viewport">
         <div class="map-surface" aria-busy="true">
