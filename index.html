@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Редактор карты</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="editor">
+    <section class="map-panel" aria-labelledby="map-title">
+      <h1 id="map-title">Карта <span>12 × 12</span></h1>
+      <div class="map-viewport">
+        <div class="map-surface" aria-busy="true">
+          <canvas id="map" width="576" height="576" tabindex="0" aria-label="Карта 12 на 12 клеток" aria-describedby="paint-help keyboard-help"></canvas>
+          <div class="map-grid" aria-hidden="true"></div>
+          <div id="keyboard-cursor" class="keyboard-cursor" aria-hidden="true"></div>
+        </div>
+      </div>
+      <p id="status" role="status">Загрузка тайлов…</p>
+      <span id="keyboard-help" class="sr-only">С клавиатуры: стрелки выбирают клетку, пробел или Enter закрашивает её выбранным террейном.</span>
+    </section>
+    <aside class="terrain-panel" aria-labelledby="terrain-title">
+      <h2 id="terrain-title">Террейн</h2>
+      <div class="terrain-list" role="group" aria-label="Выбор террейна">
+        <button type="button" class="terrain-option" data-terrain="grass" aria-pressed="true" disabled>
+          <span class="terrain-swatch terrain-swatch--grass" aria-hidden="true"></span><span>Трава</span>
+        </button>
+        <button type="button" class="terrain-option" data-terrain="sand" aria-pressed="false" disabled>
+          <span class="terrain-swatch terrain-swatch--sand" aria-hidden="true"></span><span>Песок</span>
+        </button>
+        <button type="button" class="terrain-option" data-terrain="deep-water" aria-pressed="false" disabled>
+          <span class="terrain-swatch terrain-swatch--water" aria-hidden="true"></span><span>Глубоководье</span>
+        </button>
+      </div>
+      <p id="paint-help">Выберите террейн. Зажмите левую кнопку мыши на карте и ведите по клеткам.</p>
+    </aside>
+  </main>
+</body>
+</html>
