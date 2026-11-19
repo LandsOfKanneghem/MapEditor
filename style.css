@@ -57,10 +57,10 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
 .object-layer.dragging { z-index: 3; }
 .map-object { position: absolute; width: var(--cell-size); height: var(--cell-size); image-rendering: pixelated; pointer-events: none; user-select: none; }
 .map-mob { position: absolute; width: 60px; height: 72px; image-rendering: pixelated; pointer-events: none; user-select: none; }
-.map-surface[data-mode="mobs"] #map, .map-surface[data-mode="objects"] #map { cursor: copy; }
+.map-surface[data-mode="mobs"] #map, .map-surface[data-mode="allies"] #map, .map-surface[data-mode="objects"] #map { cursor: copy; }
 .map-surface:not([data-mode="terrain"]) .map-mob, .map-surface:not([data-mode="terrain"]) .map-object { pointer-events: auto; cursor: pointer; }
-.map-surface[data-mode="mobs"] .map-mob, .map-surface[data-mode="objects"] .map-object { pointer-events: auto; cursor: grab; }
-.map-surface.dragging #map, .map-surface[data-mode="mobs"] .map-mob.dragging, .map-surface[data-mode="objects"] .map-object.dragging { cursor: grabbing; }
+.map-surface[data-mode="mobs"] .map-mob[data-team="enemy"], .map-surface[data-mode="allies"] .map-mob[data-team="ally"], .map-surface[data-mode="objects"] .map-object { pointer-events: auto; cursor: grab; }
+.map-surface.dragging #map, .map-surface.dragging .map-mob.dragging, .map-surface.dragging .map-object.dragging { cursor: grabbing; }
 .mob-drop-target { position: absolute; width: var(--cell-size); height: var(--cell-size); z-index: 3; border: 2px solid var(--accent); pointer-events: none; }
 .mob-drop-target[data-valid="false"] { border-color: #ff4d4d; }
 .keyboard-cursor {

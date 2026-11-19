@@ -7,8 +7,10 @@
   const TERRAIN = Object.freeze({ grass: 0, sand: 1, 'deep-water': 2, dirt: 3, swamp: 4, 'shallow-water': 5 });
   const terrainNames = Object.fromEntries(Object.entries(TERRAIN).map(([name, id]) => [id, name]));
   const MOB_TYPES = Object.freeze({
-    wolf: { name: 'Волк', src: 'assets/mobs/wolf.png', padding: { top: 36, right: 3, bottom: 4, left: 3 } },
-    'hill-giant': { name: 'Холмовой великан', src: 'assets/mobs/hill-giant.png', padding: { top: 4, right: 2, bottom: 4, left: 2 } }
+    wolf: { name: 'Волк', team: 'enemy', src: 'assets/mobs/wolf.png', padding: { top: 36, right: 3, bottom: 4, left: 3 } },
+    'hill-giant': { name: 'Холмовой великан', team: 'enemy', src: 'assets/mobs/hill-giant.png', padding: { top: 4, right: 2, bottom: 4, left: 2 } },
+    wizard: { name: 'Маг', team: 'ally', src: 'assets/mobs/wizard.png', padding: { top: 4, right: 7, bottom: 4, left: 7 } },
+    monk: { name: 'Монах', team: 'ally', src: 'assets/mobs/monk.png', padding: { top: 6, right: 9, bottom: 4, left: 9 } }
   });
   const OBJECT_TYPES = Object.freeze({
     crate: { name: 'Ящик', src: 'assets/objects/crate.png', blocking: true, interactive: false }
@@ -32,10 +34,12 @@
   const surface = document.querySelector('.map-surface');
   const buttons = [...document.querySelectorAll('[data-terrain]')];
   const mobButtons = [...document.querySelectorAll('[data-mob]')];
+  const allyButtons = [...document.querySelectorAll('[data-ally]')];
   const objectButtons = [...document.querySelectorAll('[data-object]')];
   const modeButtons = [...document.querySelectorAll('[data-mode].toolbar-button')];
   const terrainPalette = document.getElementById('terrain-palette');
   const mobPalette = document.getElementById('mob-palette');
+  const allyPalette = document.getElementById('ally-palette');
   const objectPalette = document.getElementById('object-palette');
   const paletteTitle = document.getElementById('terrain-title');
   const mobLayer = document.getElementById('mob-layer');
@@ -50,6 +54,7 @@
   const images = {};
   let selectedTerrain = TERRAIN.grass;
   let selectedMob = 'wolf';
+  let selectedAlly = 'wizard';
   let selectedObject = 'crate';
   let editorMode = 'terrain';
   let entityDrag = null;
@@ -170,6 +175,7 @@
       mob.element.style.zIndex = mob.y + 1;
       mob.element.dataset.x = mob.x;
       mob.element.dataset.y = mob.y;
+      mob.element.dataset.team = mob.team;
       return mob.element;
     });
     mobLayer.replaceChildren(...elements);
@@ -177,7 +183,8 @@
 
   function placeMob(cell) {
     if (isOccupied(cell)) return null;
-    const mob = { type: selectedMob, x: cell.x, y: cell.y };
+    const type = editorMode === 'allies' ? selectedAlly : selectedMob;
+    const mob = { type, team: MOB_TYPES[type].team, x: cell.x, y: cell.y };
     mobs.push(mob);
     renderMobs();
     return mob;
@@ -341,7 +348,7 @@
   }
 
   function readMapData(data) {
-    if (data?.format !== 'kanneghem-map' || ![1, 2, 3].includes(data.version)) {
+    if (data?.format !== 'kanneghem-map' || ![1, 2, 3, 4].includes(data.version)) {
       throw new Error('Неподдерживаемый формат или версия карты.');
     }
     if (data.width !== COLUMNS || data.height !== ROWS) {
@@ -380,7 +387,9 @@
       const position = mob.y * COLUMNS + mob.x;
       if (occupied.has(position)) throw new Error('На одной клетке не может быть несколько мобов.');
       occupied.add(position);
-      return { type: mob.type, x: mob.x, y: mob.y };
+      const team = data.version < 4 ? MOB_TYPES[mob.type].team : mob.team;
+      if (team !== MOB_TYPES[mob.type].team) throw new Error('Неверная сторона существа: ally или enemy.');
+      return { type: mob.type, team, x: mob.x, y: mob.y };
     });
     const savedObjects = data.version < 3 ? [] : data.objects;
     if (!Array.isArray(savedObjects) || savedObjects.length > COLUMNS * ROWS) {
@@ -406,11 +415,11 @@
     endStroke();
     const data = {
       format: 'kanneghem-map',
-      version: 3,
+      version: 4,
       width: COLUMNS,
       height: ROWS,
       tiles: map.map(row => row.map(terrain => terrainNames[terrain])),
-      mobs: mobs.map(({ type, x, y }) => ({ type, x, y })),
+      mobs: mobs.map(({ type, team, x, y }) => ({ type, team, x, y })),
       objects: objects.map(({ type, x, y }) => ({
         type, x, y, blocking: OBJECT_TYPES[type].blocking, interactive: OBJECT_TYPES[type].interactive
       }))
@@ -478,8 +487,9 @@
       surface.dataset.mode = editorMode;
       terrainPalette.hidden = editorMode !== 'terrain';
       mobPalette.hidden = editorMode !== 'mobs';
+      allyPalette.hidden = editorMode !== 'allies';
       objectPalette.hidden = editorMode !== 'objects';
-      paletteTitle.textContent = { terrain: 'Террейн', mobs: 'Мобы', objects: 'Объекты' }[editorMode];
+      paletteTitle.textContent = { terrain: 'Террейн', mobs: 'Враги', allies: 'Союзники', objects: 'Объекты' }[editorMode];
       for (const item of modeButtons) item.setAttribute('aria-pressed', String(item === button));
     });
   }
@@ -489,6 +499,14 @@
       endStroke();
       selectedMob = button.dataset.mob;
       for (const item of mobButtons) item.setAttribute('aria-pressed', String(item === button));
+    });
+  }
+
+  for (const button of allyButtons) {
+    button.addEventListener('click', () => {
+      endStroke();
+      selectedAlly = button.dataset.ally;
+      for (const item of allyButtons) item.setAttribute('aria-pressed', String(item === button));
     });
   }
 
@@ -519,13 +537,14 @@
       paintPointer(event);
     } else {
       const editingObjects = editorMode === 'objects';
+      const team = editorMode === 'allies' ? 'ally' : 'enemy';
       const entries = editingObjects ? objects : mobs;
       const clicked = mobs.find(item => item.element === event.target) ?? objects.find(item => item.element === event.target) ??
         mobAt(cell) ?? objectAt(cell);
       const entity = clicked ??
         (editingObjects ? objectAt(cell) ?? placeObject(cell) : mobAt(cell) ?? placeMob(cell));
       selectEntity(entity);
-      if (!entity || !entries.includes(entity)) {
+      if (!entity || !entries.includes(entity) || (!editingObjects && entity.team !== team)) {
         endStroke();
         showPlacementTarget(entity ? null : cell);
         event.preventDefault();
@@ -591,7 +610,7 @@
       updateKeyboardCursor();
     } else if (event.key === ' ' || event.key === 'Enter') {
       if (editorMode === 'terrain') paintLine(keyboardCell, keyboardCell);
-      else if (editorMode === 'mobs') placeMob(keyboardCell);
+      else if (editorMode === 'mobs' || editorMode === 'allies') placeMob(keyboardCell);
       else placeObject(keyboardCell);
     }
     else return;
@@ -615,7 +634,7 @@
     ready = true;
     surface.setAttribute('aria-busy', 'false');
     for (const button of buttons) button.disabled = false;
-    for (const button of [...modeButtons, ...mobButtons, ...objectButtons]) button.disabled = false;
+    for (const button of [...modeButtons, ...mobButtons, ...allyButtons, ...objectButtons]) button.disabled = false;
     saveButton.disabled = false;
     loadButton.disabled = false;
     status.textContent = '';

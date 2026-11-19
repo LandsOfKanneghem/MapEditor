@@ -33,10 +33,15 @@
           <path d="m14 4 3-2 5 5-2 3-8 8-5-5ZM7 14c-5 0-1 6-5 7 6 2 11-1 8-5"/>
         </svg>
       </button>
-      <button type="button" class="toolbar-button" data-mode="mobs" aria-label="Размещение мобов" title="Размещение мобов" aria-pressed="false" disabled>
+      <button type="button" class="toolbar-button" data-mode="mobs" aria-label="Размещение врагов" title="Размещение врагов" aria-pressed="false" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">
           <ellipse cx="6" cy="7" rx="2" ry="3"/><ellipse cx="12" cy="5" rx="2" ry="3"/><ellipse cx="18" cy="7" rx="2" ry="3"/>
           <path d="M5 18c0-3 4-8 7-8s7 5 7 8c0 5-5 2-7 2s-7 3-7-2Z"/>
+        </svg>
+      </button>
+      <button type="button" class="toolbar-button" data-mode="allies" aria-label="Размещение союзников" title="Размещение союзников" aria-pressed="false" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+          <path d="M5 22V3M5 4c5-5 9 5 15 0v11c-6 5-10-5-15 0"/>
         </svg>
       </button>
       <button type="button" class="toolbar-button" data-mode="objects" aria-label="Непроходимые объекты" title="Непроходимые объекты" aria-pressed="false" disabled>
@@ -93,6 +98,14 @@
         </button>
         <button type="button" class="terrain-option" data-mob="hill-giant" aria-label="Холмовой великан" title="Холмовой великан" aria-pressed="false" disabled>
           <img class="mob-swatch" src="assets/mobs/hill-giant.png" alt="" width="48" height="48" draggable="false">
+        </button>
+      </div>
+      <div id="ally-palette" class="terrain-list" role="group" aria-label="Выбор союзника" hidden>
+        <button type="button" class="terrain-option" data-ally="wizard" aria-label="Маг" title="Маг" aria-pressed="true" disabled>
+          <img class="mob-swatch" src="assets/mobs/wizard.png" alt="" width="48" height="48" draggable="false">
+        </button>
+        <button type="button" class="terrain-option" data-ally="monk" aria-label="Монах" title="Монах" aria-pressed="false" disabled>
+          <img class="mob-swatch" src="assets/mobs/monk.png" alt="" width="48" height="48" draggable="false">
         </button>
       </div>
       <div id="object-palette" class="terrain-list" role="group" aria-label="Выбор препятствия" hidden>
