@@ -533,23 +533,20 @@
     activePointer = event.pointerId;
     lastCell = null;
     surface.setPointerCapture(event.pointerId);
-    if (editorMode === 'terrain') {
+    const clicked = mobs.find(item => item.element === event.target) ?? objects.find(item => item.element === event.target) ??
+      mobAt(cell) ?? objectAt(cell);
+    if (editorMode === 'terrain' && !clicked) {
       paintPointer(event);
     } else {
-      const editingObjects = editorMode === 'objects';
-      const team = editorMode === 'allies' ? 'ally' : 'enemy';
-      const entries = editingObjects ? objects : mobs;
-      const clicked = mobs.find(item => item.element === event.target) ?? objects.find(item => item.element === event.target) ??
-        mobAt(cell) ?? objectAt(cell);
-      const entity = clicked ??
-        (editingObjects ? objectAt(cell) ?? placeObject(cell) : mobAt(cell) ?? placeMob(cell));
+      const entity = clicked ?? (editorMode === 'objects' ? placeObject(cell) : placeMob(cell));
       selectEntity(entity);
-      if (!entity || !entries.includes(entity) || (!editingObjects && entity.team !== team)) {
+      if (!entity) {
         endStroke();
         showPlacementTarget(entity ? null : cell);
         event.preventDefault();
         return;
       }
+      const editingObjects = objects.includes(entity);
       entityDrag = { entity, start: pointFromPointer(event), render: editingObjects ? renderObjects : renderMobs };
       entity.element.classList.add('dragging');
       entity.element.style.zIndex = ROWS + 1;
