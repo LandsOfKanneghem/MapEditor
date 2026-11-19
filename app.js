@@ -7,10 +7,10 @@
   const TERRAIN = Object.freeze({ grass: 0, sand: 1, 'deep-water': 2, dirt: 3, swamp: 4, 'shallow-water': 5 });
   const terrainNames = Object.fromEntries(Object.entries(TERRAIN).map(([name, id]) => [id, name]));
   const MOB_TYPES = Object.freeze({
-    wolf: { name: 'Волк', team: 'enemy', src: 'assets/mobs/wolf.png', padding: { top: 36, right: 3, bottom: 4, left: 3 } },
-    'hill-giant': { name: 'Холмовой великан', team: 'enemy', src: 'assets/mobs/hill-giant.png', padding: { top: 4, right: 2, bottom: 4, left: 2 } },
-    wizard: { name: 'Маг', team: 'ally', src: 'assets/mobs/wizard.png', padding: { top: 4, right: 7, bottom: 4, left: 7 } },
-    monk: { name: 'Монах', team: 'ally', src: 'assets/mobs/monk.png', padding: { top: 6, right: 9, bottom: 4, left: 9 } }
+    wolf: { name: 'Волк', team: 'enemy', src: 'assets/mobs/wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 36, right: 3, bottom: 4, left: 3 } },
+    'hill-giant': { name: 'Холмовой великан', team: 'enemy', src: 'assets/mobs/hill-giant.png', displaySize: { width: 90, height: 108 }, padding: { top: 4, right: 2, bottom: 4, left: 2 } },
+    wizard: { name: 'Маг', team: 'ally', src: 'assets/mobs/wizard.png', displaySize: { width: 72, height: 86 }, padding: { top: 4, right: 7, bottom: 4, left: 7 } },
+    monk: { name: 'Монах', team: 'ally', src: 'assets/mobs/monk.png', displaySize: { width: 72, height: 86 }, padding: { top: 6, right: 9, bottom: 4, left: 9 } }
   });
   const OBJECT_TYPES = Object.freeze({
     crate: { name: 'Ящик', src: 'assets/objects/crate.png', blocking: true, interactive: false }
@@ -157,7 +157,7 @@
   function renderMobs() {
     const elements = [...mobs].sort((a, b) => a.y - b.y || a.x - b.x).map(mob => {
       const template = MOB_TYPES[mob.type];
-      const { top, right, bottom, left } = template.padding;
+      const { width, height } = template.displaySize;
       if (!mob.element) {
         const image = document.createElement('img');
         image.className = 'map-mob';
@@ -165,13 +165,14 @@
         image.alt = template.name;
         image.title = template.name;
         image.draggable = false;
-        // Exclude transparent sprite margins from mouse hit testing.
-        image.style.clipPath = `inset(${top * 1.5}px ${right * 1.5}px ${bottom * 1.5}px ${left * 1.5}px)`;
         mob.element = image;
       }
+      mob.element.style.width = `${width}px`;
+      mob.element.style.height = `${height}px`;
+      setEntitySelected(mob, mob === selectedEntity);
       // Use the same anchor in every cell; the mob layer clips the map edges.
-      mob.element.style.left = `${(mob.x + .5) * TILE_SIZE - 45}px`;
-      mob.element.style.top = `${(mob.y + 1) * TILE_SIZE - 108}px`;
+      mob.element.style.left = `${(mob.x + .5) * TILE_SIZE - width / 2}px`;
+      mob.element.style.top = `${(mob.y + 1) * TILE_SIZE - height}px`;
       mob.element.style.zIndex = mob.y + 1;
       mob.element.dataset.x = mob.x;
       mob.element.dataset.y = mob.y;
@@ -192,11 +193,14 @@
 
   function setEntitySelected(entity, selected) {
     entity.element.classList.toggle('selected', selected);
-    const padding = MOB_TYPES[entity.type]?.padding;
-    if (padding) {
+    const template = MOB_TYPES[entity.type];
+    if (template) {
+      const { padding, displaySize } = template;
+      const scaleX = displaySize.width / images[entity.type].naturalWidth;
+      const scaleY = displaySize.height / images[entity.type].naturalHeight;
       const inset = selected ? 2 : 0;
       // Leave room for the contour without making transparent margins clickable.
-      entity.element.style.clipPath = `inset(${padding.top * 1.5 - inset}px ${padding.right * 1.5 - inset}px ${padding.bottom * 1.5 - inset}px ${padding.left * 1.5 - inset}px)`;
+      entity.element.style.clipPath = `inset(${padding.top * scaleY - inset}px ${padding.right * scaleX - inset}px ${padding.bottom * scaleY - inset}px ${padding.left * scaleX - inset}px)`;
     }
   }
 

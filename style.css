@@ -56,7 +56,7 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
 .object-layer, .mob-layer { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
 .object-layer.dragging { z-index: 3; }
 .map-object { position: absolute; width: var(--cell-size); height: var(--cell-size); image-rendering: pixelated; pointer-events: none; user-select: none; }
-.map-mob { position: absolute; width: 90px; height: 108px; image-rendering: pixelated; pointer-events: none; user-select: none; }
+.map-mob { position: absolute; image-rendering: pixelated; pointer-events: none; user-select: none; }
 .map-surface[data-mode="mobs"] #map, .map-surface[data-mode="allies"] #map, .map-surface[data-mode="objects"] #map { cursor: copy; }
 .map-mob, .map-object { pointer-events: auto; cursor: grab; }
 .map-surface.dragging #map, .map-surface.dragging .map-mob.dragging, .map-surface.dragging .map-object.dragging { cursor: grabbing; }
