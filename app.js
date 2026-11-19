@@ -166,12 +166,12 @@
         image.title = template.name;
         image.draggable = false;
         // Exclude transparent sprite margins from mouse hit testing.
-        image.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px)`;
+        image.style.clipPath = `inset(${top * 1.5}px ${right * 1.5}px ${bottom * 1.5}px ${left * 1.5}px)`;
         mob.element = image;
       }
       // Use the same anchor in every cell; the mob layer clips the map edges.
-      mob.element.style.left = `${(mob.x + .5) * TILE_SIZE - 30}px`;
-      mob.element.style.top = `${(mob.y + 1) * TILE_SIZE - 72}px`;
+      mob.element.style.left = `${(mob.x + .5) * TILE_SIZE - 45}px`;
+      mob.element.style.top = `${(mob.y + 1) * TILE_SIZE - 108}px`;
       mob.element.style.zIndex = mob.y + 1;
       mob.element.dataset.x = mob.x;
       mob.element.dataset.y = mob.y;
@@ -196,7 +196,7 @@
     if (padding) {
       const inset = selected ? 2 : 0;
       // Leave room for the contour without making transparent margins clickable.
-      entity.element.style.clipPath = `inset(${padding.top - inset}px ${padding.right - inset}px ${padding.bottom - inset}px ${padding.left - inset}px)`;
+      entity.element.style.clipPath = `inset(${padding.top * 1.5 - inset}px ${padding.right * 1.5 - inset}px ${padding.bottom * 1.5 - inset}px ${padding.left * 1.5 - inset}px)`;
     }
   }
 
