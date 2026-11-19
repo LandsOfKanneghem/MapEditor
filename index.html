@@ -127,9 +127,9 @@
   <svg class="selection-filters" width="0" height="0" aria-hidden="true" focusable="false">
     <defs>
       <filter id="entity-selection-outline" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
-        <feMorphology in="SourceAlpha" operator="dilate" radius="2" result="expanded"/>
-        <feFlood flood-color="#0088ff" result="purple"/>
-        <feComposite in="purple" in2="expanded" operator="in" result="outline"/>
+        <feMorphology in="SourceAlpha" operator="dilate" radius="1" result="expanded"/>
+        <feFlood flood-color="#ffff00" result="yellow"/>
+        <feComposite in="yellow" in2="expanded" operator="in" result="outline"/>
         <feMerge><feMergeNode in="outline"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
     </defs>
