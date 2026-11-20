@@ -9,7 +9,7 @@
   const MOB_TYPES = Object.freeze({
     wolf: { name: 'Волк', team: 'enemy', src: 'assets/mobs/wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 36, right: 3, bottom: 4, left: 3 } },
     'black-wolf': { name: 'Чёрный волк', team: 'enemy', src: 'assets/mobs/black-wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 36, right: 3, bottom: 4, left: 3 } },
-    'hill-giant': { name: 'Холмовой великан', team: 'enemy', src: 'assets/mobs/hill-giant.png', displaySize: { width: 90, height: 108 }, padding: { top: 4, right: 2, bottom: 4, left: 2 } },
+    'hill-giant': { name: 'Холмовой великан', team: 'enemy', src: 'assets/mobs/hill-giant.png', displaySize: { width: 90, height: 108 }, padding: { top: 4, right: 9, bottom: 4, left: 8 } },
     'lake-spirit': { name: 'Дух озера', team: 'enemy', src: 'assets/mobs/lake-spirit.png', displaySize: { width: 60, height: 72 }, padding: { top: 4, right: 3, bottom: 4, left: 2 } },
     nymph: { name: 'Нимфа', team: 'enemy', src: 'assets/mobs/nymph.png', displaySize: { width: 72, height: 86 }, padding: { top: 4, right: 3, bottom: 4, left: 2 } },
     wizard: { name: 'Маг', team: 'ally', src: 'assets/mobs/wizard.png', displaySize: { width: 72, height: 86 }, padding: { top: 4, right: 7, bottom: 4, left: 7 } },
