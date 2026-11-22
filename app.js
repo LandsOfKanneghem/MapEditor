@@ -9,6 +9,7 @@
   const MOB_TYPES = Object.freeze({
     wolf: { name: 'Волк', team: 'enemy', src: 'assets/mobs/wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 36, right: 3, bottom: 4, left: 3 } },
     'black-wolf': { name: 'Чёрный волк', team: 'enemy', src: 'assets/mobs/black-wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 36, right: 3, bottom: 4, left: 3 } },
+    werewolf: { name: 'Оборотень', team: 'enemy', src: 'assets/mobs/werewolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 4, right: 8, bottom: 4, left: 7 } },
     hound: { name: 'Гончая', team: 'enemy', src: 'assets/mobs/hound.png', displaySize: { width: 72, height: 86 }, padding: { top: 19, right: 6, bottom: 4, left: 5 } },
     'alligator-snapping-turtle': { name: 'Грифовая черепаха', team: 'enemy', src: 'assets/mobs/alligator-snapping-turtle.png', displaySize: { width: 90, height: 108 }, padding: { top: 37, right: 2, bottom: 4, left: 2 } },
     'hill-giant': { name: 'Холмовой великан', team: 'enemy', src: 'assets/mobs/hill-giant.png', displaySize: { width: 90, height: 108 }, padding: { top: 4, right: 9, bottom: 4, left: 8 } },
