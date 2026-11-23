@@ -14,6 +14,7 @@
     'hill-giant': { name: 'Холмовой великан', team: 'enemy', src: 'assets/mobs/hill-giant.png', displaySize: { width: 90, height: 108 }, padding: { top: 4, right: 9, bottom: 4, left: 8 } },
     'giant-toad': { name: 'Гигантская жаба', team: 'enemy', src: 'assets/mobs/giant-toad.png', displaySize: { width: 90, height: 108 }, padding: { top: 37, right: 2, bottom: 4, left: 2 } },
     specter: { name: 'Спектр', team: 'enemy', src: 'assets/mobs/specter.png', displaySize: { width: 72, height: 86 }, padding: { top: 0, right: 8, bottom: 3, left: 7 } },
+    shadow: { name: 'Тень', team: 'enemy', src: 'assets/mobs/shadow.png', displaySize: { width: 72, height: 86 }, padding: { top: 5, right: 13, bottom: 9, left: 11 } },
     'lake-spirit': { name: 'Дух озера', team: 'enemy', src: 'assets/mobs/lake-spirit.png', displaySize: { width: 60, height: 72 }, padding: { top: 4, right: 3, bottom: 4, left: 2 } },
     nymph: { name: 'Нимфа', team: 'enemy', src: 'assets/mobs/nymph.png', displaySize: { width: 72, height: 86 }, padding: { top: 4, right: 3, bottom: 4, left: 2 } },
     wizard: { name: 'Маг', team: 'ally', src: 'assets/mobs/wizard.png', displaySize: { width: 72, height: 86 }, padding: { top: 4, right: 7, bottom: 4, left: 7 } },
