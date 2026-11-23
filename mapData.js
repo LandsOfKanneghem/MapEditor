@@ -15,6 +15,7 @@
   const matrix = (value) => Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(value));
   const createLighting = () => ({ mode: 'absolute', ambient: 100, cells: matrix(null) });
   const validBrightness = value => Number.isFinite(value) && value >= 0 && value <= 200;
+  const clampBrightness = value => Math.max(60, Math.min(120, value));
   const inside = (x, y) => x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT;
   const isWater = (terrain) => terrain === TERRAIN['deep-water'] || terrain === TERRAIN['shallow-water'];
 
@@ -34,12 +35,13 @@
         value.cells.some(row => !Array.isArray(row) || row.length !== WIDTH || row.some(v => !validCell(v)))) {
       throw new Error('Неверные настройки освещения карты.');
     }
-    return { mode: 'absolute', ambient: value.ambient, cells: value.cells.map(row => row.map(v =>
-      absolute ? v : v === 100 ? null : value.ambient * v / 100)) };
+    return { mode: 'absolute', ambient: clampBrightness(value.ambient), cells: value.cells.map(row => row.map(v =>
+      absolute ? v === null ? null : clampBrightness(v)
+        : v === 100 ? null : clampBrightness(value.ambient * v / 100))) };
   }
 
   function lightAt(map, x, y) {
-    return (map.lighting?.cells[y]?.[x] ?? map.lighting?.ambient ?? 100) / 100;
+    return clampBrightness(map.lighting?.cells[y]?.[x] ?? map.lighting?.ambient ?? 100) / 100;
   }
 
   function wallInfo(level, x, y) {
@@ -135,7 +137,8 @@
       objects: map.objects.map(({ type, x, y }) => ({ type, x, y,
         blocking: objectTypes[type].blocking, interactive: objectTypes[type].interactive })) };
     if (map.wallStyles) saved.wallStyles = map.wallStyles.map(row => [...row]);
-    saved.lighting = { mode: 'absolute', ambient: map.lighting.ambient, cells: map.lighting.cells.map(row => [...row]) };
+    saved.lighting = { mode: 'absolute', ambient: clampBrightness(map.lighting.ambient),
+      cells: map.lighting.cells.map(row => row.map(v => v === null ? null : clampBrightness(v))) };
     return saved;
   }
 

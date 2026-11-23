@@ -151,14 +151,14 @@ test('brush brightness overrides ambient and remains absolute when ambient chang
   assert.equal(M.lightAt(map, 0, 0), .6);
   map.lighting.ambient = 30;
   assert.equal(M.lightAt(map, 3, 2), 1);
-  assert.equal(M.lightAt(map, 0, 0), .3);
+  assert.equal(M.lightAt(map, 0, 0), .6);
   map.lighting.cells[2][3] = 0;
-  assert.equal(M.lightAt(map, 3, 2), 0);
+  assert.equal(M.lightAt(map, 3, 2), .6);
   map.lighting.cells[2][3] = 200;
-  assert.equal(M.lightAt(map, 3, 2), 2);
+  assert.equal(M.lightAt(map, 3, 2), 1.2);
 });
 
-test('old relative lighting migrates without changing its visible brightness', () => {
+test('old relative lighting migrates into the available brightness range', () => {
   const data = save(M.createMap());
   data.lighting = { ambient: 60, cells: Array.from({length:12},()=>Array(12).fill(100)) };
   data.lighting.cells[0][0] = 150;
@@ -170,21 +170,21 @@ test('old relative lighting migrates without changing its visible brightness', (
   assert.equal(read(save(map)).lighting.mode, 'absolute');
   data.lighting.ambient = 200;
   data.lighting.cells[0][0] = 200;
-  assert.equal(M.lightAt(read(save(read(data))), 0, 0), 4);
+  assert.equal(M.lightAt(read(save(read(data))), 0, 0), 1.2);
 });
 
 test('lighting round-trips on both map types and copies are independent', () => {
   for (const type of ['surface', 'underground']) {
     const map = M.createMap(type);
-    map.lighting.ambient = 30;
-    map.lighting.cells[3][4] = 175;
+    map.lighting.ambient = 80;
+    map.lighting.cells[3][4] = 115;
     const encoded = save(map);
     const loaded = read(encoded);
     assert.deepEqual(loaded.lighting, map.lighting);
     assert.deepEqual(save(loaded), encoded);
     encoded.lighting.cells[3][4] = 0;
-    assert.equal(map.lighting.cells[3][4], 175);
-    assert.equal(loaded.lighting.cells[3][4], 175);
+    assert.equal(map.lighting.cells[3][4], 115);
+    assert.equal(loaded.lighting.cells[3][4], 115);
     loaded.lighting.cells[0][0] = 50;
     assert.equal(loaded.lighting.cells[1][0], null);
     assert.equal(M.createMap(type).lighting.cells[0][0], null);
@@ -210,3 +210,18 @@ for (const [name, mutate] of Object.entries(invalidLighting)) {
     assert.throws(() => read(data), /освещения/);
   });
 }
+
+test('old absolute light is clamped on import and on export', () => {
+  const data = save(M.createMap());
+  data.lighting.ambient = 20;
+  data.lighting.cells[0][0] = 180;
+  data.lighting.cells[0][1] = 0;
+  const loaded = read(data);
+  assert.equal(loaded.lighting.ambient, 60);
+  assert.deepEqual(loaded.lighting.cells[0].slice(0, 3), [120, 60, null]);
+  loaded.lighting.ambient = 200;
+  loaded.lighting.cells[0][0] = 0;
+  const exported = save(loaded);
+  assert.equal(exported.lighting.ambient, 120);
+  assert.equal(exported.lighting.cells[0][0], 60);
+});

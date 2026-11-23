@@ -130,13 +130,14 @@
       </section>
       <section id="lighting-palette" class="lighting-panel" aria-label="Настройки освещения" hidden>
         <label for="ambient-brightness">Общая яркость <output id="ambient-value" for="ambient-brightness">100%</output></label>
-        <input id="ambient-brightness" type="range" min="0" max="200" step="1" value="100" disabled>
+        <input id="ambient-brightness" type="range" min="60" max="120" step="1" value="100" disabled>
         <div class="lighting-presets" role="group" aria-label="Общий свет">
           <button type="button" data-ambient="100" disabled>День</button>
-          <button type="button" data-ambient="60" disabled>Вечер</button>
+          <button type="button" data-ambient="80" disabled>Вечер</button>
+          <button type="button" data-ambient="60" disabled>Темно</button>
         </div>
         <label for="cell-brightness">Яркость кисти <output id="cell-value" for="cell-brightness">100%</output></label>
-        <input id="cell-brightness" type="range" min="0" max="200" step="1" value="100" disabled>
+        <input id="cell-brightness" type="range" min="60" max="120" step="1" value="100" disabled>
         <p class="lighting-note">Кисть задаёт яркость клетки независимо от общего света. 100% — обычный дневной свет.</p>
         <button type="button" id="reset-lighting" disabled>Сбросить освещение</button>
       </section>
