@@ -4,8 +4,7 @@
   const COLUMNS = 12;
   const ROWS = 12;
   const TILE_SIZE = 48;
-  const TERRAIN = Object.freeze({ grass: 0, sand: 1, 'deep-water': 2, dirt: 3, swamp: 4, 'shallow-water': 5 });
-  const terrainNames = Object.fromEntries(Object.entries(TERRAIN).map(([name, id]) => [id, name]));
+  const { TERRAIN } = window.MapData;
   const MOB_TYPES = Object.freeze({
     wolf: { name: 'Волк', team: 'enemy', src: 'assets/mobs/wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 36, right: 3, bottom: 4, left: 3 } },
     'black-wolf': { name: 'Чёрный волк', team: 'enemy', src: 'assets/mobs/black-wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 36, right: 3, bottom: 4, left: 3 } },
@@ -34,9 +33,11 @@
   const MASKS = [0, 1, 4, 5, 7, 16, 17, 20, 21, 23, 28, 29, 31, 64, 65, 68, 69, 71, 80, 81, 84, 85, 87, 92, 93, 95, 112, 113, 116, 117, 119, 124, 125, 127, 193, 197, 199, 209, 213, 215, 221, 223, 241, 245, 247, 253, 255];
   const maskIndex = new Map(MASKS.map((mask, index) => [mask, index]));
   const neighbors = [[0, -1, 1], [1, -1, 2], [1, 0, 4], [1, 1, 8], [0, 1, 16], [-1, 1, 32], [-1, 0, 64], [-1, -1, 128]];
-  const map = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(TERRAIN.grass));
-  const mobs = [];
-  const objects = [];
+  let levels = window.MapData.createLevels();
+  let currentLevelId = 'surface';
+  let map = levels.surface.tiles;
+  let mobs = levels.surface.mobs;
+  let objects = levels.surface.objects;
   const canvas = document.getElementById('map');
   const context = canvas.getContext('2d');
   const surface = document.querySelector('.map-surface');
@@ -49,6 +50,9 @@
   const mobPalette = document.getElementById('mob-palette');
   const allyPalette = document.getElementById('ally-palette');
   const objectPalette = document.getElementById('object-palette');
+  const wallPalette = document.getElementById('wall-palette');
+  const wallButtons = [...document.querySelectorAll('[data-wall]')];
+  const levelButton = document.getElementById('toggle-level');
   const paletteTitle = document.getElementById('terrain-title');
   const mobLayer = document.getElementById('mob-layer');
   const objectLayer = document.getElementById('object-layer');
@@ -61,6 +65,9 @@
   const deleteButton = document.getElementById('delete-selection');
   const images = {};
   let selectedTerrain = TERRAIN.grass;
+  const levelBrushes = { surface: TERRAIN.grass, underground: TERRAIN['monastery-floor'] };
+  let selectedWall = 'monastery';
+  let terrainBrush = 'floor';
   let selectedMob = 'wolf';
   let selectedAlly = 'wizard';
   let selectedObject = 'crate';
@@ -103,6 +110,18 @@
   function drawCell(x, y) {
     const terrain = map[y][x];
     const variant = (((x * 73856093) ^ (y * 19349663)) >>> 0) % 3;
+    if (terrain === TERRAIN.void) {
+      context.fillStyle = '#000';
+      context.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      const wall = window.MapData.wallInfo(levels[currentLevelId], x, y);
+      if (wall) context.drawImage(window.UndergroundRenderer.wallTile(wall.style, wall.mask, images[`wall-${wall.style}`]),
+        x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      return;
+    }
+    if (terrain === TERRAIN['monastery-floor'] || terrain === TERRAIN['cave-earth']) {
+      drawFloor(x, y, terrain, variant);
+      return;
+    }
     drawBase(TERRAIN.grass, variant, x, y);
     // Matching land masks let each upper layer cover the lower ones cleanly.
     // Sand remains the last land layer, preserving the beach around all water.
@@ -116,6 +135,28 @@
       const mask = terrainMask(x, y, 4);
       if (mask === 255) drawBase(terrain, variant, x, y);
       else drawOverlay(terrain === TERRAIN['deep-water'] ? 'water' : 'shallow-water', mask, x, y);
+    }
+  }
+
+  function drawFloor(x, y, terrain, variant) {
+    const name = terrain === TERRAIN['monastery-floor'] ? 'monastery-floor' : 'cave-earth';
+    const underground = currentLevelId === 'underground';
+    // Underground floor cells stay completely filled, including at the void boundary.
+    let mask = 0;
+    for (const [dx, dy, bit] of neighbors) {
+      const t = map[Math.max(0, Math.min(ROWS - 1, y + dy))][Math.max(0, Math.min(COLUMNS - 1, x + dx))];
+      if (underground ? t !== TERRAIN['cave-earth'] : t === terrain) mask |= bit;
+    }
+    mask = normalizeMask(mask);
+    if (underground && terrain === TERRAIN['cave-earth']) mask = 255;
+    if (mask === 255) {
+      context.drawImage(images[name], variant * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE,
+        x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    } else {
+      if (underground) context.drawImage(images['cave-earth'], variant * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE,
+        x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      else drawBase(TERRAIN.grass, variant, x, y);
+      drawOverlay(`${name}-edges`, mask, x, y);
     }
   }
 
@@ -133,6 +174,10 @@
 
   function isOccupied(cell, except = null) {
     return Boolean(mobAt(cell, except) || objectAt(cell, except));
+  }
+
+  function canPlace(cell, except = null) {
+    return map[cell.y][cell.x] !== TERRAIN.void && !isOccupied(cell, except);
   }
 
   function renderObjects() {
@@ -155,7 +200,7 @@
   }
 
   function placeObject(cell) {
-    if (isOccupied(cell)) return null;
+    if (!canPlace(cell)) return null;
     const object = { type: selectedObject, x: cell.x, y: cell.y };
     objects.push(object);
     renderObjects();
@@ -191,7 +236,7 @@
   }
 
   function placeMob(cell) {
-    if (isOccupied(cell)) return null;
+    if (!canPlace(cell)) return null;
     const type = editorMode === 'allies' ? selectedAlly : selectedMob;
     const mob = { type, team: MOB_TYPES[type].team, x: cell.x, y: cell.y };
     mobs.push(mob);
@@ -272,7 +317,7 @@
     if (!cell) return;
     dropTarget.style.left = `${cell.x * TILE_SIZE}px`;
     dropTarget.style.top = `${cell.y * TILE_SIZE}px`;
-    dropTarget.dataset.valid = String(!isOccupied(cell, except));
+    dropTarget.dataset.valid = String(canPlace(cell, except));
   }
 
   function updatePlacementHover(event) {
@@ -298,6 +343,19 @@
 
   function setTerrain(x, y, terrain, dirty) {
     if (map[y][x] === terrain) return;
+    if (terrain === TERRAIN.void && isOccupied({ x, y })) {
+      status.textContent = 'Сначала уберите существо или объект с этой клетки.';
+      return;
+    }
+    const level = levels[currentLevelId];
+    if (level.wallStyles && terrain !== TERRAIN.void) {
+      level.wallStyles[y][x] = selectedWall;
+      for (const [dx, dy] of neighbors) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && nx < COLUMNS && ny >= 0 && ny < ROWS &&
+            map[ny][nx] === TERRAIN.void && !window.MapData.wallInfo(level, nx, ny)) level.wallStyles[ny][nx] = selectedWall;
+      }
+    }
     map[y][x] = terrain;
     for (let yy = Math.max(0, y - 1); yy <= Math.min(ROWS - 1, y + 1); yy++) {
       for (let xx = Math.max(0, x - 1); xx <= Math.min(COLUMNS - 1, x + 1); xx++) dirty.add(yy * COLUMNS + xx);
@@ -305,6 +363,14 @@
   }
 
   function paintCell(x, y, dirty) {
+    if (terrainBrush === 'wall' && currentLevelId === 'underground') {
+      const level = levels.underground;
+      if (window.MapData.wallInfo(level, x, y)) {
+        level.wallStyles[y][x] = selectedWall;
+        dirty.add(y * COLUMNS + x);
+      }
+      return;
+    }
     if (map[y][x] === selectedTerrain) return;
     if (!isWater(selectedTerrain)) {
       setTerrain(x, y, selectedTerrain, dirty);
@@ -359,83 +425,54 @@
     cursor.style.setProperty('--cursor-y', keyboardCell.y);
   }
 
-  function readMapData(data) {
-    if (data?.format !== 'kanneghem-map' || ![1, 2, 3, 4].includes(data.version)) {
-      throw new Error('Неподдерживаемый формат или версия карты.');
+  function refreshPalette() {
+    const underground = currentLevelId === 'underground';
+    surface.dataset.mode = editorMode;
+    surface.dataset.level = currentLevelId;
+    terrainPalette.hidden = editorMode !== 'terrain';
+    wallPalette.hidden = !underground || editorMode !== 'terrain';
+    mobPalette.hidden = editorMode !== 'mobs';
+    allyPalette.hidden = editorMode !== 'allies';
+    objectPalette.hidden = editorMode !== 'objects';
+    for (const button of buttons) {
+      button.hidden = button.dataset.terrain === 'void' && !underground;
+      button.setAttribute('aria-pressed', String(terrainBrush === 'floor' && TERRAIN[button.dataset.terrain] === selectedTerrain));
     }
-    if (data.width !== COLUMNS || data.height !== ROWS) {
-      throw new Error(`Размер карты должен быть ${COLUMNS}×${ROWS}.`);
-    }
-    if (!Array.isArray(data.tiles) || data.tiles.length !== ROWS ||
-        data.tiles.some(row => !Array.isArray(row) || row.length !== COLUMNS)) {
-      throw new Error('Неверное количество строк или клеток карты.');
-    }
-    const tiles = data.tiles.map(row => row.map(name => {
-      if (typeof name !== 'string' || !Object.hasOwn(TERRAIN, name)) {
-        throw new Error('В карте указан неизвестный тип поверхности.');
-      }
-      return TERRAIN[name];
-    }));
-    for (let y = 0; y < ROWS; y++) {
-      for (let x = 0; x < COLUMNS; x++) {
-        const terrain = tiles[y][x];
-        const right = tiles[y][x + 1], below = tiles[y + 1]?.[x];
-        if (isWater(terrain) && ((isWater(right) && right !== terrain) || (isWater(below) && below !== terrain))) {
-          throw new Error('В одном водоёме не могут смешиваться мелководье и глубоководье.');
-        }
-      }
-    }
-    const savedMobs = data.version === 1 ? [] : data.mobs;
-    if (!Array.isArray(savedMobs) || savedMobs.length > COLUMNS * ROWS) {
-      throw new Error('Неверный список мобов карты.');
-    }
-    const occupied = new Set();
-    const loadedMobs = savedMobs.map(mob => {
-      if (!mob || typeof mob.type !== 'string' || !Object.hasOwn(MOB_TYPES, mob.type) ||
-          !Number.isInteger(mob.x) || !Number.isInteger(mob.y) ||
-          mob.x < 0 || mob.x >= COLUMNS || mob.y < 0 || mob.y >= ROWS) {
-        throw new Error('В карте указан неизвестный моб или неверная клетка.');
-      }
-      const position = mob.y * COLUMNS + mob.x;
-      if (occupied.has(position)) throw new Error('На одной клетке не может быть несколько мобов.');
-      occupied.add(position);
-      const team = data.version < 4 ? MOB_TYPES[mob.type].team : mob.team;
-      if (team !== MOB_TYPES[mob.type].team) throw new Error('Неверная сторона существа: ally или enemy.');
-      return { type: mob.type, team, x: mob.x, y: mob.y };
-    });
-    const savedObjects = data.version < 3 ? [] : data.objects;
-    if (!Array.isArray(savedObjects) || savedObjects.length > COLUMNS * ROWS) {
-      throw new Error('Неверный список объектов карты.');
-    }
-    const loadedObjects = savedObjects.map(object => {
-      if (!object || typeof object.type !== 'string' || !Object.hasOwn(OBJECT_TYPES, object.type) ||
-          !Number.isInteger(object.x) || !Number.isInteger(object.y) ||
-          object.x < 0 || object.x >= COLUMNS || object.y < 0 || object.y >= ROWS ||
-          object.blocking !== true || object.interactive !== false) {
-        throw new Error('В карте указан неизвестный объект или неверные параметры препятствия.');
-      }
-      const position = object.y * COLUMNS + object.x;
-      if (occupied.has(position)) throw new Error('Клетка объекта уже занята мобом или другим объектом.');
-      occupied.add(position);
-      return { type: object.type, x: object.x, y: object.y };
-    });
-    return { tiles, mobs: loadedMobs, objects: loadedObjects };
+    for (const button of wallButtons) button.setAttribute('aria-pressed', String(button.dataset.wall === selectedWall));
+    const title = { terrain: 'Террейн', mobs: 'Враги', allies: 'Союзники', objects: 'Объекты' }[editorMode];
+    paletteTitle.textContent = underground ? `${title} — под землёй` : title;
+    levelButton.setAttribute('aria-pressed', String(underground));
+    levelButton.setAttribute('aria-label', underground ? 'Под землёй' : 'На земле');
+    levelButton.title = underground ? 'Под землёй — перейти на землю' : 'На земле — перейти под землю';
+    canvas.setAttribute('aria-label', `Карта 12 на 12 клеток — ${underground ? 'под землёй' : 'на земле'}`);
   }
+
+  function activateLevel(id) {
+    endStroke();
+    selectEntity(null);
+    levelBrushes[currentLevelId] = selectedTerrain;
+    currentLevelId = id;
+    map = levels[id].tiles;
+    mobs = levels[id].mobs;
+    objects = levels[id].objects;
+    selectedTerrain = levelBrushes[id];
+    terrainBrush = 'floor';
+    refreshPalette();
+    renderMap();
+    renderObjects();
+    renderMobs();
+  }
+
+  levelButton.addEventListener('click', () => {
+    if (!ready || loadButton.disabled) return;
+    activateLevel(currentLevelId === 'surface' ? 'underground' : 'surface');
+    status.textContent = '';
+  });
 
   saveButton.addEventListener('click', () => {
     if (!ready) return;
     endStroke();
-    const data = {
-      format: 'kanneghem-map',
-      version: 4,
-      width: COLUMNS,
-      height: ROWS,
-      tiles: map.map(row => row.map(terrain => terrainNames[terrain])),
-      mobs: mobs.map(({ type, team, x, y }) => ({ type, team, x, y })),
-      objects: objects.map(({ type, x, y }) => ({
-        type, x, y, blocking: OBJECT_TYPES[type].blocking, interactive: OBJECT_TYPES[type].interactive
-      }))
-    };
+    const data = window.MapData.serialize(levels, currentLevelId, OBJECT_TYPES);
     const blob = new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -461,16 +498,12 @@
     saveButton.disabled = true;
     deleteButton.disabled = true;
     try {
-      const loaded = readMapData(JSON.parse(await file.text()));
+      const loaded = window.MapData.readDocument(JSON.parse(await file.text()), MOB_TYPES, OBJECT_TYPES);
       // Validate the entire file before replacing the current map.
       endStroke();
       selectEntity(null);
-      map.splice(0, ROWS, ...loaded.tiles);
-      mobs.splice(0, mobs.length, ...loaded.mobs);
-      objects.splice(0, objects.length, ...loaded.objects);
-      renderMap();
-      renderObjects();
-      renderMobs();
+      levels = loaded.levels;
+      activateLevel(loaded.activeLevel);
       status.textContent = 'Карта загружена.';
     } catch (error) {
       status.textContent = error instanceof SyntaxError
@@ -496,12 +529,7 @@
       endStroke();
       editorMode = button.dataset.mode;
       if (editorMode === 'terrain') selectEntity(null);
-      surface.dataset.mode = editorMode;
-      terrainPalette.hidden = editorMode !== 'terrain';
-      mobPalette.hidden = editorMode !== 'mobs';
-      allyPalette.hidden = editorMode !== 'allies';
-      objectPalette.hidden = editorMode !== 'objects';
-      paletteTitle.textContent = { terrain: 'Террейн', mobs: 'Враги', allies: 'Союзники', objects: 'Объекты' }[editorMode];
+      refreshPalette();
       for (const item of modeButtons) item.setAttribute('aria-pressed', String(item === button));
     });
   }
@@ -534,12 +562,22 @@
     button.addEventListener('click', () => {
       endStroke();
       selectedTerrain = TERRAIN[button.dataset.terrain];
-      for (const item of buttons) item.setAttribute('aria-pressed', String(item === button));
+      terrainBrush = 'floor';
+      refreshPalette();
+    });
+  }
+
+  for (const button of wallButtons) {
+    button.addEventListener('click', () => {
+      endStroke();
+      selectedWall = button.dataset.wall;
+      terrainBrush = 'wall';
+      refreshPalette();
     });
   }
 
   surface.addEventListener('pointerdown', event => {
-    if (!ready || !event.isPrimary || event.button !== 0 || activePointer !== null) return;
+    if (!ready || loadButton.disabled || !event.isPrimary || event.button !== 0 || activePointer !== null) return;
     const cell = cellFromPointer(event);
     if (!cell) return;
     activePointer = event.pointerId;
@@ -593,7 +631,7 @@
     if (event.pointerId !== activePointer) return;
     if (entityDrag) {
       const target = updateEntityDrag(event);
-      if (target && !isOccupied(target, entityDrag.entity)) {
+      if (target && canPlace(target, entityDrag.entity)) {
         entityDrag.entity.x = target.x;
         entityDrag.entity.y = target.y;
       }
@@ -611,7 +649,7 @@
     if (deleteSelection()) event.preventDefault();
   });
   canvas.addEventListener('keydown', event => {
-    if (!ready) return;
+    if (!ready || loadButton.disabled) return;
     const movement = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
     if (movement) {
       keyboardCell.x = Math.max(0, Math.min(COLUMNS - 1, keyboardCell.x + movement[0]));
@@ -629,6 +667,8 @@
   async function loadTiles() {
     const assets = [
       ...['base', 'sand', 'water', 'dirt', 'swamp', 'shallow-water'].map(name => [name, `assets/terrain/${name}.png`]),
+      ...['monastery-floor', 'cave-earth', 'monastery-floor-edges', 'cave-earth-edges', 'wall-monastery', 'wall-dungeon']
+        .map(name => [name, `assets/terrain/${name}.png`]),
       ...Object.entries(MOB_TYPES).map(([name, template]) => [name, template.src]),
       ...Object.entries(OBJECT_TYPES).map(([name, template]) => [name, template.src])
     ];
@@ -639,11 +679,13 @@
       image.src = src;
     })));
     context.imageSmoothingEnabled = false;
-    renderMap();
+    activateLevel('surface');
     ready = true;
     surface.setAttribute('aria-busy', 'false');
     for (const button of buttons) button.disabled = false;
     for (const button of [...modeButtons, ...mobButtons, ...allyButtons, ...objectButtons]) button.disabled = false;
+    for (const button of wallButtons) button.disabled = false;
+    levelButton.disabled = false;
     saveButton.disabled = false;
     loadButton.disabled = false;
     status.textContent = '';

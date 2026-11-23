@@ -32,6 +32,11 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
   cursor: pointer;
 }
 .toolbar-button svg { display: block; width: 24px; height: 24px; }
+#toggle-level .underground-icon, #toggle-level[aria-pressed="true"] .surface-icon { display: none; }
+#toggle-level[aria-pressed="true"] .underground-icon { display: block; }
+.editor-toolbar { flex-wrap: wrap; }
+#wall-palette h3 { font-size: 14px; font-weight: 600; margin: 18px 0 8px; }
+#wall-palette[hidden], .terrain-option[hidden] { display: none; }
 .toolbar-button[aria-pressed="true"] { border-color: #82bddb; background: #3d5665; }
 .toolbar-button:hover:not(:disabled) { filter: brightness(1.15); }
 .toolbar-button:disabled { opacity: .5; cursor: wait; }
@@ -100,6 +105,10 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
 .terrain-swatch--dirt { background-position: 0 -144px; }
 .terrain-swatch--swamp { background-position: 0 -192px; }
 .terrain-swatch--shallow-water { background-position: 0 -240px; }
+.terrain-swatch--monastery-floor { background: url('assets/terrain/monastery-floor.png') 0 0 / 144px 48px; }
+.terrain-swatch--cave-earth { background: url('assets/terrain/cave-earth.png') 0 0 / 144px 48px; }
+.terrain-swatch--void { background: #000; }
+.map-surface[data-level="underground"] { background: #000; }
 p { margin: 14px 0 0; color: #b8b5ab; font-size: 13px; line-height: 1.5; }
 #status { min-height: 20px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
