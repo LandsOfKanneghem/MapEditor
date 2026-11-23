@@ -139,20 +139,38 @@ test('maps without lighting data open at neutral brightness, including legacy fi
     delete data.lighting;
     const map = read(data);
     assert.equal(map.lighting.ambient, 100);
-    assert(map.lighting.cells.flat().every(value => value === 100));
+    assert(map.lighting.cells.flat().every(value => value === null));
   }
 });
 
-test('global and local brightness multiply; black and boosted cells remain valid', () => {
+test('brush brightness overrides ambient and remains absolute when ambient changes', () => {
   const map = M.createMap();
   map.lighting.ambient = 60;
-  map.lighting.cells[2][3] = 150;
-  assert.equal(M.lightAt(map, 3, 2), .9);
+  map.lighting.cells[2][3] = 100;
+  assert.equal(M.lightAt(map, 3, 2), 1);
   assert.equal(M.lightAt(map, 0, 0), .6);
+  map.lighting.ambient = 30;
+  assert.equal(M.lightAt(map, 3, 2), 1);
+  assert.equal(M.lightAt(map, 0, 0), .3);
   map.lighting.cells[2][3] = 0;
   assert.equal(M.lightAt(map, 3, 2), 0);
-  map.lighting.ambient = map.lighting.cells[2][3] = 200;
-  assert.equal(M.lightAt(map, 3, 2), 4);
+  map.lighting.cells[2][3] = 200;
+  assert.equal(M.lightAt(map, 3, 2), 2);
+});
+
+test('old relative lighting migrates without changing its visible brightness', () => {
+  const data = save(M.createMap());
+  data.lighting = { ambient: 60, cells: Array.from({length:12},()=>Array(12).fill(100)) };
+  data.lighting.cells[0][0] = 150;
+  const map = read(data);
+  assert.equal(map.lighting.cells[0][0], 90);
+  assert.equal(map.lighting.cells[0][1], null);
+  assert.equal(M.lightAt(map, 0, 0), .9);
+  assert.equal(M.lightAt(map, 1, 0), .6);
+  assert.equal(read(save(map)).lighting.mode, 'absolute');
+  data.lighting.ambient = 200;
+  data.lighting.cells[0][0] = 200;
+  assert.equal(M.lightAt(read(save(read(data))), 0, 0), 4);
 });
 
 test('lighting round-trips on both map types and copies are independent', () => {
@@ -168,8 +186,8 @@ test('lighting round-trips on both map types and copies are independent', () => 
     assert.equal(map.lighting.cells[3][4], 175);
     assert.equal(loaded.lighting.cells[3][4], 175);
     loaded.lighting.cells[0][0] = 50;
-    assert.equal(loaded.lighting.cells[1][0], 100);
-    assert.equal(M.createMap(type).lighting.cells[0][0], 100);
+    assert.equal(loaded.lighting.cells[1][0], null);
+    assert.equal(M.createMap(type).lighting.cells[0][0], null);
   }
 });
 
@@ -182,7 +200,7 @@ const invalidLighting = {
   'missing cells': d => { delete d.lighting.cells; },
   'short row': d => { d.lighting.cells[0].pop(); },
   'negative cell': d => { d.lighting.cells[0][0] = -1; },
-  'excess cell': d => { d.lighting.cells[0][0] = 201; },
+  'excess cell': d => { d.lighting.cells[0][0] = 401; },
   'nonfinite cell': d => { d.lighting.cells[0][0] = Infinity; }
 };
 for (const [name, mutate] of Object.entries(invalidLighting)) {

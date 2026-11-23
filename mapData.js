@@ -13,7 +13,7 @@
   const NEIGHBORS = [[0, -1, 1], [1, 0, 4], [0, 1, 16], [-1, 0, 64],
     [1, -1, 2], [1, 1, 8], [-1, 1, 32], [-1, -1, 128]];
   const matrix = (value) => Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(value));
-  const createLighting = () => ({ ambient: 100, cells: matrix(100) });
+  const createLighting = () => ({ mode: 'absolute', ambient: 100, cells: matrix(null) });
   const validBrightness = value => Number.isFinite(value) && value >= 0 && value <= 200;
   const inside = (x, y) => x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT;
   const isWater = (terrain) => terrain === TERRAIN['deep-water'] || terrain === TERRAIN['shallow-water'];
@@ -27,15 +27,19 @@
 
   function readLighting(value) {
     if (value === undefined) return createLighting();
+    const absolute = value?.mode === 'absolute';
+    const validCell = v => absolute ? v === null || (Number.isFinite(v) && v >= 0 && v <= 400) : validBrightness(v);
     if (!value || !validBrightness(value.ambient) || !Array.isArray(value.cells) || value.cells.length !== HEIGHT ||
-        value.cells.some(row => !Array.isArray(row) || row.length !== WIDTH || row.some(v => !validBrightness(v)))) {
-      throw new Error('Неверные настройки освещения карты: яркость должна быть от 0 до 200%.');
+        (value.mode !== undefined && !absolute) ||
+        value.cells.some(row => !Array.isArray(row) || row.length !== WIDTH || row.some(v => !validCell(v)))) {
+      throw new Error('Неверные настройки освещения карты.');
     }
-    return { ambient: value.ambient, cells: value.cells.map(row => [...row]) };
+    return { mode: 'absolute', ambient: value.ambient, cells: value.cells.map(row => row.map(v =>
+      absolute ? v : v === 100 ? null : value.ambient * v / 100)) };
   }
 
   function lightAt(map, x, y) {
-    return (map.lighting?.ambient ?? 100) * (map.lighting?.cells[y]?.[x] ?? 100) / 10000;
+    return (map.lighting?.cells[y]?.[x] ?? map.lighting?.ambient ?? 100) / 100;
   }
 
   function wallInfo(level, x, y) {
@@ -131,7 +135,7 @@
       objects: map.objects.map(({ type, x, y }) => ({ type, x, y,
         blocking: objectTypes[type].blocking, interactive: objectTypes[type].interactive })) };
     if (map.wallStyles) saved.wallStyles = map.wallStyles.map(row => [...row]);
-    saved.lighting = { ambient: map.lighting.ambient, cells: map.lighting.cells.map(row => [...row]) };
+    saved.lighting = { mode: 'absolute', ambient: map.lighting.ambient, cells: map.lighting.cells.map(row => [...row]) };
     return saved;
   }
 
