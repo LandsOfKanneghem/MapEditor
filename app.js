@@ -764,7 +764,7 @@
     endStroke();
     selectEntity(mob);
     contextMob = mob;
-    teamOption.textContent = `Сторона: ${mob.team === 'ally' ? 'союзники' : 'враги'}`;
+    teamOption.textContent = `Поменять сторону: ${mob.team === 'ally' ? 'враги' : 'союзники'}`;
     mobMenu.hidden = false;
     mobMenu.style.left = `${Math.max(0, Math.min(event.clientX, innerWidth - mobMenu.offsetWidth))}px`;
     mobMenu.style.top = `${Math.max(0, Math.min(event.clientY, innerHeight - mobMenu.offsetHeight))}px`;
