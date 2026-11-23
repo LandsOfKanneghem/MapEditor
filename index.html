@@ -138,6 +138,11 @@
         </div>
         <label for="cell-brightness">Яркость кисти <output id="cell-value" for="cell-brightness">100%</output></label>
         <input id="cell-brightness" type="range" min="60" max="120" step="1" value="100" disabled>
+        <div class="lighting-presets" role="group" aria-label="Яркость кисти">
+          <button type="button" data-brush-light="100" disabled>День</button>
+          <button type="button" data-brush-light="80" disabled>Вечер</button>
+          <button type="button" data-brush-light="60" disabled>Темно</button>
+        </div>
         <p class="lighting-note">Кисть задаёт яркость клетки независимо от общего света. 100% — обычный дневной свет.</p>
         <button type="button" id="reset-lighting" disabled>Сбросить освещение</button>
       </section>

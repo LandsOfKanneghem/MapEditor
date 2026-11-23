@@ -61,6 +61,7 @@
   const ambientValue = document.getElementById('ambient-value');
   const brushValue = document.getElementById('cell-value');
   const lightingPresets = [...document.querySelectorAll('[data-ambient]')];
+  const brushPresets = [...document.querySelectorAll('[data-brush-light]')];
   const resetLightingButton = document.getElementById('reset-lighting');
   const wallButtons = [...document.querySelectorAll('[data-wall]')];
   const levelButton = document.getElementById('toggle-level');
@@ -213,12 +214,14 @@
   }
 
   ambientInput.addEventListener('input', () => setAmbient(Number(ambientInput.value)));
-  brushInput.addEventListener('input', () => {
+  function setLightingBrush(value) {
     if (!ready || loadButton.disabled) return;
     endStroke();
-    lightingBrush = Number(brushInput.value);
+    lightingBrush = value;
     refreshLightingControls();
-  });
+  }
+  brushInput.addEventListener('input', () => setLightingBrush(Number(brushInput.value)));
+  for (const button of brushPresets) button.addEventListener('click', () => setLightingBrush(Number(button.dataset.brushLight)));
   for (const button of lightingPresets) button.addEventListener('click', () => setAmbient(Number(button.dataset.ambient)));
   resetLightingButton.addEventListener('click', () => {
     if (!ready || loadButton.disabled) return;
@@ -585,7 +588,7 @@
     loadButton.disabled = true;
     saveButton.disabled = true;
     deleteButton.disabled = true;
-    for (const control of [ambientInput, brushInput, resetLightingButton, ...lightingPresets]) control.disabled = true;
+    for (const control of [ambientInput, brushInput, resetLightingButton, ...lightingPresets, ...brushPresets]) control.disabled = true;
     try {
       const data = JSON.parse(await file.text());
       const loaded = window.MapData.readDocument(data, MOB_TYPES, OBJECT_TYPES);
@@ -603,7 +606,7 @@
       loadButton.disabled = false;
       saveButton.disabled = false;
       deleteButton.disabled = !selectedEntity;
-      for (const control of [ambientInput, brushInput, resetLightingButton, ...lightingPresets]) control.disabled = false;
+      for (const control of [ambientInput, brushInput, resetLightingButton, ...lightingPresets, ...brushPresets]) control.disabled = false;
     }
   });
 
@@ -777,7 +780,7 @@
     for (const button of [...modeButtons, ...mobButtons, ...allyButtons, ...objectButtons]) button.disabled = false;
     for (const button of wallButtons) button.disabled = false;
     levelButton.disabled = false;
-    for (const control of [ambientInput, brushInput, resetLightingButton, ...lightingPresets]) control.disabled = false;
+    for (const control of [ambientInput, brushInput, resetLightingButton, ...lightingPresets, ...brushPresets]) control.disabled = false;
     saveButton.disabled = false;
     loadButton.disabled = false;
     status.textContent = '';
