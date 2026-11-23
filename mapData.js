@@ -1,4 +1,4 @@
-/* Map storage is independent of the visible level and of derived wall graphics. */
+/* A document contains one map, with a surface or underground environment. */
 ((root) => {
   'use strict';
   const WIDTH = 12, HEIGHT = 12;
@@ -8,7 +8,7 @@
   const COSTS = Object.freeze({ grass: 1, sand: 2, 'deep-water': null, dirt: 1,
     swamp: 2, 'shallow-water': null, 'monastery-floor': 1, 'cave-earth': 1, void: null });
   const WALL_TYPES = Object.freeze(['monastery', 'dungeon']);
-  const LEVEL_IDS = Object.freeze(['surface', 'underground']);
+  const MAP_TYPES = Object.freeze(['surface', 'underground']);
   // Cardinals first provide a stable style choice when two rooms meet diagonally.
   const NEIGHBORS = [[0, -1, 1], [1, 0, 4], [0, 1, 16], [-1, 0, 64],
     [1, -1, 2], [1, 1, 8], [-1, 1, 32], [-1, -1, 128]];
@@ -16,17 +16,14 @@
   const inside = (x, y) => x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT;
   const isWater = (terrain) => terrain === TERRAIN['deep-water'] || terrain === TERRAIN['shallow-water'];
 
-  function createLevel(id) {
-    return { tiles: matrix(id === 'underground' ? TERRAIN.void : TERRAIN.grass),
-      mobs: [], objects: [], wallStyles: id === 'underground' ? matrix(null) : null };
-  }
-
-  function createLevels() {
-    return Object.fromEntries(LEVEL_IDS.map(id => [id, createLevel(id)]));
+  function createMap(mapType = 'surface') {
+    if (!MAP_TYPES.includes(mapType)) throw new Error('Неизвестный тип карты.');
+    return { mapType, tiles: matrix(mapType === 'underground' ? TERRAIN.void : TERRAIN.grass),
+      mobs: [], objects: [], wallStyles: mapType === 'underground' ? matrix(null) : null };
   }
 
   function wallInfo(level, x, y) {
-    if (!level.wallStyles || !inside(x, y) || level.tiles[y][x] !== TERRAIN.void) return null;
+    if (level.mapType !== 'underground' || !level.wallStyles || !inside(x, y) || level.tiles[y][x] !== TERRAIN.void) return null;
     let mask = 0, inherited = null;
     for (const [dx, dy, bit] of NEIGHBORS) {
       const nx = x + dx, ny = y + dy;
@@ -37,13 +34,13 @@
     return mask ? { mask, style: level.wallStyles[y][x] ?? inherited ?? 'monastery' } : null;
   }
 
-  function readLevel(data, version, id, mobTypes, objectTypes) {
+  function readMap(data, version, mapType, mobTypes, objectTypes) {
     if (!data || !Array.isArray(data.tiles) || data.tiles.length !== HEIGHT ||
         data.tiles.some(row => !Array.isArray(row) || row.length !== WIDTH)) {
       throw new Error('Неверное количество строк или клеток карты.');
     }
     const tiles = data.tiles.map(row => row.map(name => {
-      if (typeof name !== 'string' || !Object.hasOwn(TERRAIN, name) || (id === 'surface' && name === 'void')) {
+      if (typeof name !== 'string' || !Object.hasOwn(TERRAIN, name) || (mapType === 'surface' && name === 'void')) {
         throw new Error('В карте указан неизвестный или недопустимый тип поверхности.');
       }
       return TERRAIN[name];
@@ -83,7 +80,7 @@
       return { type: object.type, x: object.x, y: object.y };
     });
     let wallStyles = null;
-    if (id === 'underground') {
+    if (mapType === 'underground') {
       if (!Array.isArray(data.wallStyles) || data.wallStyles.length !== HEIGHT ||
           data.wallStyles.some(row => !Array.isArray(row) || row.length !== WIDTH ||
             row.some(style => style !== null && !WALL_TYPES.includes(style)))) {
@@ -91,40 +88,38 @@
       }
       wallStyles = data.wallStyles.map(row => [...row]);
     }
-    return { tiles, mobs, objects, wallStyles };
+    return { mapType, tiles, mobs, objects, wallStyles };
   }
 
   function readDocument(data, mobTypes, objectTypes) {
-    if (data?.format !== 'kanneghem-map' || ![1, 2, 3, 4, 5].includes(data.version)) {
+    if (data?.format !== 'kanneghem-map' || ![1, 2, 3, 4, 5, 6].includes(data.version)) {
       throw new Error('Неподдерживаемый формат или версия карты.');
     }
     if (data.width !== WIDTH || data.height !== HEIGHT) throw new Error(`Размер карты должен быть ${WIDTH}×${HEIGHT}.`);
     if (data.version < 5) {
-      const levels = createLevels();
-      levels.surface = readLevel(data, data.version, 'surface', mobTypes, objectTypes);
-      return { levels, activeLevel: 'surface' };
+      return readMap(data, data.version, 'surface', mobTypes, objectTypes);
     }
-    if (!LEVEL_IDS.includes(data.activeLevel)) throw new Error('Неизвестный уровень карты.');
-    const levels = Object.fromEntries(LEVEL_IDS.map(id =>
-      [id, readLevel(data.levels?.[id], 5, id, mobTypes, objectTypes)]));
-    return { levels, activeLevel: data.activeLevel };
+    if (data.version === 5) {
+      // The former two-level format imports only the level selected when saved.
+      if (!MAP_TYPES.includes(data.activeLevel)) throw new Error('Неизвестный уровень карты.');
+      return readMap(data.levels?.[data.activeLevel], 5, data.activeLevel, mobTypes, objectTypes);
+    }
+    if (!MAP_TYPES.includes(data.mapType)) throw new Error('Неизвестный тип карты.');
+    return readMap(data, data.version, data.mapType, mobTypes, objectTypes);
   }
 
-  function serialize(levels, activeLevel, objectTypes) {
-    return { format: 'kanneghem-map', version: 5, width: WIDTH, height: HEIGHT, activeLevel,
-      levels: Object.fromEntries(LEVEL_IDS.map(id => {
-        const level = levels[id];
-        const saved = { tiles: level.tiles.map(row => row.map(t => NAMES[t])),
-          mobs: level.mobs.map(({ type, team, x, y }) => ({ type, team, x, y })),
-          objects: level.objects.map(({ type, x, y }) => ({ type, x, y,
-            blocking: objectTypes[type].blocking, interactive: objectTypes[type].interactive })) };
-        if (level.wallStyles) saved.wallStyles = level.wallStyles.map(row => [...row]);
-        return [id, saved];
-      })) };
+  function serialize(map, objectTypes) {
+    const saved = { format: 'kanneghem-map', version: 6, width: WIDTH, height: HEIGHT, mapType: map.mapType,
+      tiles: map.tiles.map(row => row.map(t => NAMES[t])),
+      mobs: map.mobs.map(({ type, team, x, y }) => ({ type, team, x, y })),
+      objects: map.objects.map(({ type, x, y }) => ({ type, x, y,
+        blocking: objectTypes[type].blocking, interactive: objectTypes[type].interactive })) };
+    if (map.wallStyles) saved.wallStyles = map.wallStyles.map(row => [...row]);
+    return saved;
   }
 
-  const api = Object.freeze({ WIDTH, HEIGHT, TERRAIN, COSTS, WALL_TYPES, LEVEL_IDS, NEIGHBORS,
-    createLevel, createLevels, wallInfo, readDocument, serialize });
+  const api = Object.freeze({ WIDTH, HEIGHT, TERRAIN, COSTS, WALL_TYPES, MAP_TYPES, NEIGHBORS,
+    createMap, wallInfo, readDocument, serialize });
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MapData = api;
 })(typeof window === 'undefined' ? globalThis : window);

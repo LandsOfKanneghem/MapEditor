@@ -33,11 +33,10 @@
   const MASKS = [0, 1, 4, 5, 7, 16, 17, 20, 21, 23, 28, 29, 31, 64, 65, 68, 69, 71, 80, 81, 84, 85, 87, 92, 93, 95, 112, 113, 116, 117, 119, 124, 125, 127, 193, 197, 199, 209, 213, 215, 221, 223, 241, 245, 247, 253, 255];
   const maskIndex = new Map(MASKS.map((mask, index) => [mask, index]));
   const neighbors = [[0, -1, 1], [1, -1, 2], [1, 0, 4], [1, 1, 8], [0, 1, 16], [-1, 1, 32], [-1, 0, 64], [-1, -1, 128]];
-  let levels = window.MapData.createLevels();
-  let currentLevelId = 'surface';
-  let map = levels.surface.tiles;
-  let mobs = levels.surface.mobs;
-  let objects = levels.surface.objects;
+  let mapDocument = window.MapData.createMap();
+  let map = mapDocument.tiles;
+  let mobs = mapDocument.mobs;
+  let objects = mapDocument.objects;
   const canvas = document.getElementById('map');
   const context = canvas.getContext('2d');
   const surface = document.querySelector('.map-surface');
@@ -65,7 +64,6 @@
   const deleteButton = document.getElementById('delete-selection');
   const images = {};
   let selectedTerrain = TERRAIN.grass;
-  const levelBrushes = { surface: TERRAIN.grass, underground: TERRAIN['monastery-floor'] };
   let selectedWall = 'monastery';
   let terrainBrush = 'floor';
   let selectedMob = 'wolf';
@@ -90,7 +88,10 @@
     let mask = 0;
     for (const [dx, dy, bit] of neighbors) {
       // Continue the edge terrain visually; no cells exist outside the map.
-      const terrain = map[Math.max(0, Math.min(ROWS - 1, y + dy))][Math.max(0, Math.min(COLUMNS - 1, x + dx))];
+      let terrain = map[Math.max(0, Math.min(ROWS - 1, y + dy))][Math.max(0, Math.min(COLUMNS - 1, x + dx))];
+      // Void and stone floors must not introduce a grass underlay at the edge.
+      if (mapDocument.mapType === 'underground' &&
+          (terrain === TERRAIN.void || terrainLevels[terrain] === undefined)) terrain = map[y][x];
       if (terrainLevels[terrain] >= level) mask |= bit;
     }
     return normalizeMask(mask);
@@ -113,7 +114,7 @@
     if (terrain === TERRAIN.void) {
       context.fillStyle = '#000';
       context.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      const wall = window.MapData.wallInfo(levels[currentLevelId], x, y);
+      const wall = window.MapData.wallInfo(mapDocument, x, y);
       if (wall) context.drawImage(window.UndergroundRenderer.wallTile(wall.style, wall.mask, images[`wall-${wall.style}`]),
         x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       return;
@@ -140,7 +141,7 @@
 
   function drawFloor(x, y, terrain, variant) {
     const name = terrain === TERRAIN['monastery-floor'] ? 'monastery-floor' : 'cave-earth';
-    const underground = currentLevelId === 'underground';
+    const underground = mapDocument.mapType === 'underground';
     // Underground floor cells stay completely filled, including at the void boundary.
     let mask = 0;
     for (const [dx, dy, bit] of neighbors) {
@@ -347,7 +348,7 @@
       status.textContent = 'Сначала уберите существо или объект с этой клетки.';
       return;
     }
-    const level = levels[currentLevelId];
+    const level = mapDocument;
     if (level.wallStyles && terrain !== TERRAIN.void) {
       level.wallStyles[y][x] = selectedWall;
       for (const [dx, dy] of neighbors) {
@@ -363,8 +364,8 @@
   }
 
   function paintCell(x, y, dirty) {
-    if (terrainBrush === 'wall' && currentLevelId === 'underground') {
-      const level = levels.underground;
+    if (terrainBrush === 'wall' && mapDocument.mapType === 'underground') {
+      const level = mapDocument;
       if (window.MapData.wallInfo(level, x, y)) {
         level.wallStyles[y][x] = selectedWall;
         dirty.add(y * COLUMNS + x);
@@ -426,9 +427,9 @@
   }
 
   function refreshPalette() {
-    const underground = currentLevelId === 'underground';
+    const underground = mapDocument.mapType === 'underground';
     surface.dataset.mode = editorMode;
-    surface.dataset.level = currentLevelId;
+    surface.dataset.level = mapDocument.mapType;
     terrainPalette.hidden = editorMode !== 'terrain';
     wallPalette.hidden = !underground || editorMode !== 'terrain';
     mobPalette.hidden = editorMode !== 'mobs';
@@ -443,19 +444,18 @@
     paletteTitle.textContent = underground ? `${title} — под землёй` : title;
     levelButton.setAttribute('aria-pressed', String(underground));
     levelButton.setAttribute('aria-label', underground ? 'Под землёй' : 'На земле');
-    levelButton.title = underground ? 'Под землёй — перейти на землю' : 'На земле — перейти под землю';
+    levelButton.title = underground ? 'Создать карту на земле — очистить текущую' : 'Создать карту под землёй — очистить текущую';
     canvas.setAttribute('aria-label', `Карта 12 на 12 клеток — ${underground ? 'под землёй' : 'на земле'}`);
   }
 
-  function activateLevel(id) {
+  function activateMap(nextMap) {
     endStroke();
     selectEntity(null);
-    levelBrushes[currentLevelId] = selectedTerrain;
-    currentLevelId = id;
-    map = levels[id].tiles;
-    mobs = levels[id].mobs;
-    objects = levels[id].objects;
-    selectedTerrain = levelBrushes[id];
+    mapDocument = nextMap;
+    map = nextMap.tiles;
+    mobs = nextMap.mobs;
+    objects = nextMap.objects;
+    selectedTerrain = nextMap.mapType === 'underground' ? TERRAIN['monastery-floor'] : TERRAIN.grass;
     terrainBrush = 'floor';
     refreshPalette();
     renderMap();
@@ -465,14 +465,14 @@
 
   levelButton.addEventListener('click', () => {
     if (!ready || loadButton.disabled) return;
-    activateLevel(currentLevelId === 'surface' ? 'underground' : 'surface');
+    activateMap(window.MapData.createMap(mapDocument.mapType === 'surface' ? 'underground' : 'surface'));
     status.textContent = '';
   });
 
   saveButton.addEventListener('click', () => {
     if (!ready) return;
     endStroke();
-    const data = window.MapData.serialize(levels, currentLevelId, OBJECT_TYPES);
+    const data = window.MapData.serialize(mapDocument, OBJECT_TYPES);
     const blob = new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -498,13 +498,13 @@
     saveButton.disabled = true;
     deleteButton.disabled = true;
     try {
-      const loaded = window.MapData.readDocument(JSON.parse(await file.text()), MOB_TYPES, OBJECT_TYPES);
+      const data = JSON.parse(await file.text());
+      const loaded = window.MapData.readDocument(data, MOB_TYPES, OBJECT_TYPES);
       // Validate the entire file before replacing the current map.
       endStroke();
       selectEntity(null);
-      levels = loaded.levels;
-      activateLevel(loaded.activeLevel);
-      status.textContent = 'Карта загружена.';
+      activateMap(loaded);
+      status.textContent = data.version === 5 ? 'Загружен выбранный уровень карты старого формата.' : 'Карта загружена.';
     } catch (error) {
       status.textContent = error instanceof SyntaxError
         ? 'Не удалось загрузить карту: файл не содержит корректный JSON.'
@@ -679,7 +679,7 @@
       image.src = src;
     })));
     context.imageSmoothingEnabled = false;
-    activateLevel('surface');
+    activateMap(mapDocument);
     ready = true;
     surface.setAttribute('aria-busy', 'false');
     for (const button of buttons) button.disabled = false;
