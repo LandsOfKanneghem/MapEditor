@@ -86,7 +86,9 @@
     }
     const savedMobs = version === 1 ? [] : data.mobs;
     if (!Array.isArray(savedMobs) || savedMobs.length > WIDTH * HEIGHT) throw new Error('Неверный список мобов карты.');
-    const mobs = savedMobs.map(mob => {
+    const mobs = savedMobs.map(savedMob => {
+      const mob = savedMob?.type === 'alligator-snapping-turtle'
+        ? { ...savedMob, type: 'dragon-turtle' } : savedMob;
       if (!mob || typeof mob.type !== 'string' || !Object.hasOwn(mobTypes, mob.type)) throw new Error('В карте указан неизвестный моб.');
       claim(mob);
       const team = version < 4 ? mobTypes[mob.type].team : mob.team;

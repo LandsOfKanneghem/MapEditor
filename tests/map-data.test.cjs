@@ -225,3 +225,12 @@ test('old absolute light is clamped on import and on export', () => {
   assert.equal(exported.lighting.ambient, 120);
   assert.equal(exported.lighting.cells[0][0], 60);
 });
+
+test('old turtle maps load and save under the new dragon-turtle id', () => {
+  const data = save(M.createMap());
+  data.mobs.push({ type: 'alligator-snapping-turtle', team: 'enemy', x: 3, y: 3 });
+  const loaded = M.readDocument(data, { ...mobTypes, 'dragon-turtle': { team: 'enemy' } }, objectTypes);
+  assert.equal(loaded.mobs[0].type, 'dragon-turtle');
+  assert.equal(save(loaded).mobs[0].type, 'dragon-turtle');
+  assert.equal(data.mobs[0].type, 'alligator-snapping-turtle');
+});

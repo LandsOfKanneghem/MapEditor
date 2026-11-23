@@ -10,7 +10,7 @@
     'black-wolf': { name: 'Чёрный волк', team: 'enemy', src: 'assets/mobs/black-wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 43, right: 3.6, bottom: 4.777778, left: 3.6 } },
     werewolf: { name: 'Оборотень', team: 'enemy', src: 'assets/mobs/werewolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 4.777778, right: 9.6, bottom: 4.777778, left: 8.4 } },
     hound: { name: 'Гончая', team: 'enemy', src: 'assets/mobs/hound.png', displaySize: { width: 72, height: 86 }, padding: { top: 22.694444, right: 7.2, bottom: 4.777778, left: 6 } },
-    'alligator-snapping-turtle': { name: 'Грифовая черепаха', team: 'enemy', src: 'assets/mobs/alligator-snapping-turtle.png', displaySize: { width: 90, height: 108 }, padding: { top: 44, right: 2, bottom: 5, left: 2 } },
+    'dragon-turtle': { name: 'Драконовая черепаха', team: 'enemy', src: 'assets/mobs/dragon-turtle.png', displaySize: { width: 90, height: 108 }, padding: { top: 44, right: 2, bottom: 5, left: 2 } },
     'hill-giant': { name: 'Холмовой великан', team: 'enemy', src: 'assets/mobs/hill-giant.png', displaySize: { width: 90, height: 108 }, padding: { top: 4.777778, right: 10.8, bottom: 4.777778, left: 9.6 } },
     'giant-toad': { name: 'Гигантская жаба', team: 'enemy', src: 'assets/mobs/giant-toad.png', displaySize: { width: 90, height: 108 }, padding: { top: 44.194444, right: 2.4, bottom: 4.777778, left: 2.4 } },
     specter: { name: 'Спектр', team: 'enemy', src: 'assets/mobs/specter.png', displaySize: { width: 72, height: 86 }, padding: { top: 0, right: 8, bottom: 3, left: 7 } },
