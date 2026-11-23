@@ -333,6 +333,7 @@
   }
 
   function selectEntity(entity) {
+    closeMobMenu();
     if (selectedEntity) setEntitySelected(selectedEntity, false);
     selectedEntity = entity;
     if (selectedEntity) setEntitySelected(selectedEntity, true);
@@ -735,7 +736,45 @@
   });
   window.addEventListener('blur', endStroke);
   document.addEventListener('visibilitychange', () => { if (document.hidden) endStroke(); });
-  surface.addEventListener('contextmenu', event => event.preventDefault());
+  const mobMenu = document.createElement('div');
+  mobMenu.className = 'mob-context-menu';
+  mobMenu.hidden = true;
+  mobMenu.setAttribute('role', 'menu');
+  const teamOption = document.createElement('button');
+  teamOption.type = 'button';
+  teamOption.setAttribute('role', 'menuitem');
+  mobMenu.appendChild(teamOption);
+  document.body.appendChild(mobMenu);
+  let contextMob = null;
+  function closeMobMenu() { mobMenu.hidden = true; contextMob = null; }
+  teamOption.addEventListener('click', () => {
+    if (contextMob && mobs.includes(contextMob) && !['wizard', 'monk'].includes(contextMob.type)) {
+      contextMob.team = contextMob.team === 'ally' ? 'enemy' : 'ally';
+      renderMobs();
+    }
+    closeMobMenu();
+  });
+  surface.addEventListener('contextmenu', event => {
+    event.preventDefault();
+    closeMobMenu();
+    if (!ready || loadButton.disabled) return;
+    const cell = cellFromPointer(event);
+    const mob = mobs.find(item => item.element === event.target) ?? (cell && mobAt(cell));
+    if (!mob || ['wizard', 'monk'].includes(mob.type)) return;
+    endStroke();
+    selectEntity(mob);
+    contextMob = mob;
+    teamOption.textContent = `Сторона: ${mob.team === 'ally' ? 'союзники' : 'враги'}`;
+    mobMenu.hidden = false;
+    mobMenu.style.left = `${Math.max(0, Math.min(event.clientX, innerWidth - mobMenu.offsetWidth))}px`;
+    mobMenu.style.top = `${Math.max(0, Math.min(event.clientY, innerHeight - mobMenu.offsetHeight))}px`;
+    teamOption.focus();
+  });
+  document.addEventListener('pointerdown', event => { if (!mobMenu.contains(event.target)) closeMobMenu(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMobMenu(); });
+  window.addEventListener('blur', closeMobMenu);
+  window.addEventListener('resize', closeMobMenu);
+  window.addEventListener('scroll', closeMobMenu, true);
   deleteButton.addEventListener('click', deleteSelection);
   document.addEventListener('keydown', event => {
     if (event.key !== 'Delete') return;

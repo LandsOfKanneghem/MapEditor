@@ -120,7 +120,7 @@ const invalidCases = {
   'missing wall styles': d => { delete d.wallStyles; },
   'mob inside void': d => { d.mobs.push({ type: 'wolf', team: 'enemy', x: 3, y: 3 }); },
   'unknown mob': d => { d.mobs.push({ type: 'gnome', team: 'enemy', x: 3, y: 3 }); },
-  'incorrect team': d => { d.tiles[3][3] = 'grass'; d.mobs.push({ type: 'wolf', team: 'ally', x: 3, y: 3 }); },
+  'incorrect team': d => { d.tiles[3][3] = 'grass'; d.mobs.push({ type: 'wolf', team: 'unknown', x: 3, y: 3 }); },
   'occupied cell': d => { d.tiles[3][3] = 'grass'; d.mobs.push({ type: 'wolf', team: 'enemy', x: 3, y: 3 }); d.objects.push({ type: 'crate', x: 3, y: 3, blocking: true, interactive: false }); },
   'mixed water component': d => { d.tiles[0][0] = 'deep-water'; d.tiles[0][1] = 'shallow-water'; }
 };
@@ -233,4 +233,14 @@ test('old turtle maps load and save under the new dragon-turtle id', () => {
   assert.equal(loaded.mobs[0].type, 'dragon-turtle');
   assert.equal(save(loaded).mobs[0].type, 'dragon-turtle');
   assert.equal(data.mobs[0].type, 'alligator-snapping-turtle');
+});
+
+test('creatures can change side while hero sides remain locked', () => {
+  const data = save(M.createMap());
+  data.mobs = [{ type: 'wolf', team: 'ally', x: 3, y: 3 }];
+  assert.equal(save(read(data)).mobs[0].team, 'ally');
+  data.mobs[0].team = 'enemy';
+  assert.equal(read(data).mobs[0].team, 'enemy');
+  data.mobs[0] = { type: 'wizard', team: 'enemy', x: 3, y: 3 };
+  assert.throws(() => read(data));
 });
