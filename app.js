@@ -6,19 +6,19 @@
   const TILE_SIZE = 48;
   const { TERRAIN } = window.MapData;
   const MOB_TYPES = Object.freeze({
-    wolf: { name: 'Волк', team: 'enemy', src: 'assets/mobs/wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 36, right: 3, bottom: 4, left: 3 } },
-    'black-wolf': { name: 'Чёрный волк', team: 'enemy', src: 'assets/mobs/black-wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 36, right: 3, bottom: 4, left: 3 } },
-    werewolf: { name: 'Оборотень', team: 'enemy', src: 'assets/mobs/werewolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 4, right: 8, bottom: 4, left: 7 } },
-    hound: { name: 'Гончая', team: 'enemy', src: 'assets/mobs/hound.png', displaySize: { width: 72, height: 86 }, padding: { top: 19, right: 6, bottom: 4, left: 5 } },
-    'alligator-snapping-turtle': { name: 'Грифовая черепаха', team: 'enemy', src: 'assets/mobs/alligator-snapping-turtle.png', displaySize: { width: 90, height: 108 }, padding: { top: 37, right: 2, bottom: 4, left: 2 } },
-    'hill-giant': { name: 'Холмовой великан', team: 'enemy', src: 'assets/mobs/hill-giant.png', displaySize: { width: 90, height: 108 }, padding: { top: 4, right: 9, bottom: 4, left: 8 } },
-    'giant-toad': { name: 'Гигантская жаба', team: 'enemy', src: 'assets/mobs/giant-toad.png', displaySize: { width: 90, height: 108 }, padding: { top: 37, right: 2, bottom: 4, left: 2 } },
+    wolf: { name: 'Волк', team: 'enemy', src: 'assets/mobs/wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 43, right: 3.6, bottom: 4.777778, left: 3.6 } },
+    'black-wolf': { name: 'Чёрный волк', team: 'enemy', src: 'assets/mobs/black-wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 43, right: 3.6, bottom: 4.777778, left: 3.6 } },
+    werewolf: { name: 'Оборотень', team: 'enemy', src: 'assets/mobs/werewolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 4.777778, right: 9.6, bottom: 4.777778, left: 8.4 } },
+    hound: { name: 'Гончая', team: 'enemy', src: 'assets/mobs/hound.png', displaySize: { width: 72, height: 86 }, padding: { top: 22.694444, right: 7.2, bottom: 4.777778, left: 6 } },
+    'alligator-snapping-turtle': { name: 'Грифовая черепаха', team: 'enemy', src: 'assets/mobs/alligator-snapping-turtle.png', displaySize: { width: 90, height: 108 }, padding: { top: 44.194444, right: 2.4, bottom: 4.777778, left: 2.4 } },
+    'hill-giant': { name: 'Холмовой великан', team: 'enemy', src: 'assets/mobs/hill-giant.png', displaySize: { width: 90, height: 108 }, padding: { top: 4.777778, right: 10.8, bottom: 4.777778, left: 9.6 } },
+    'giant-toad': { name: 'Гигантская жаба', team: 'enemy', src: 'assets/mobs/giant-toad.png', displaySize: { width: 90, height: 108 }, padding: { top: 44.194444, right: 2.4, bottom: 4.777778, left: 2.4 } },
     specter: { name: 'Спектр', team: 'enemy', src: 'assets/mobs/specter.png', displaySize: { width: 72, height: 86 }, padding: { top: 0, right: 8, bottom: 3, left: 7 } },
     shadow: { name: 'Тень', team: 'enemy', src: 'assets/mobs/shadow.png', displaySize: { width: 72, height: 86 }, padding: { top: 5, right: 13, bottom: 9, left: 11 } },
     'lake-spirit': { name: 'Дух озера', team: 'enemy', src: 'assets/mobs/lake-spirit.png', displaySize: { width: 60, height: 72 }, padding: { top: 4, right: 3, bottom: 4, left: 2 } },
-    nymph: { name: 'Нимфа', team: 'enemy', src: 'assets/mobs/nymph.png', displaySize: { width: 72, height: 86 }, padding: { top: 4, right: 3, bottom: 4, left: 2 } },
-    wizard: { name: 'Маг', team: 'ally', src: 'assets/mobs/wizard.png', displaySize: { width: 72, height: 86 }, padding: { top: 4, right: 7, bottom: 4, left: 7 } },
-    monk: { name: 'Монах', team: 'ally', src: 'assets/mobs/monk.png', displaySize: { width: 72, height: 86 }, padding: { top: 6, right: 9, bottom: 4, left: 9 } }
+    nymph: { name: 'Нимфа', team: 'enemy', src: 'assets/mobs/nymph.png', displaySize: { width: 72, height: 86 }, padding: { top: 4.777778, right: 3.6, bottom: 4.777778, left: 2.4 } },
+    wizard: { name: 'Маг', team: 'ally', src: 'assets/mobs/wizard.png', displaySize: { width: 72, height: 86 }, padding: { top: 4.777778, right: 8.4, bottom: 4.777778, left: 8.4 } },
+    monk: { name: 'Монах', team: 'ally', src: 'assets/mobs/monk.png', displaySize: { width: 72, height: 86 }, padding: { top: 7.166667, right: 10.8, bottom: 4.777778, left: 10.8 } }
   });
   const OBJECT_TYPES = Object.freeze({
     crate: { name: 'Ящик', src: 'assets/objects/crate.png', blocking: true, interactive: false }
