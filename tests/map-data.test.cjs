@@ -131,3 +131,64 @@ for (const [name, mutate] of Object.entries(invalidCases)) {
     assert.throws(() => read(data));
   });
 }
+
+test('maps without lighting data open at neutral brightness, including legacy files', () => {
+  for (const version of [1, 2, 3, 4, 6]) {
+    const data = save(M.createMap());
+    data.version = version;
+    delete data.lighting;
+    const map = read(data);
+    assert.equal(map.lighting.ambient, 100);
+    assert(map.lighting.cells.flat().every(value => value === 100));
+  }
+});
+
+test('global and local brightness multiply; black and boosted cells remain valid', () => {
+  const map = M.createMap();
+  map.lighting.ambient = 60;
+  map.lighting.cells[2][3] = 150;
+  assert.equal(M.lightAt(map, 3, 2), .9);
+  assert.equal(M.lightAt(map, 0, 0), .6);
+  map.lighting.cells[2][3] = 0;
+  assert.equal(M.lightAt(map, 3, 2), 0);
+  map.lighting.ambient = map.lighting.cells[2][3] = 200;
+  assert.equal(M.lightAt(map, 3, 2), 4);
+});
+
+test('lighting round-trips on both map types and copies are independent', () => {
+  for (const type of ['surface', 'underground']) {
+    const map = M.createMap(type);
+    map.lighting.ambient = 30;
+    map.lighting.cells[3][4] = 175;
+    const encoded = save(map);
+    const loaded = read(encoded);
+    assert.deepEqual(loaded.lighting, map.lighting);
+    assert.deepEqual(save(loaded), encoded);
+    encoded.lighting.cells[3][4] = 0;
+    assert.equal(map.lighting.cells[3][4], 175);
+    assert.equal(loaded.lighting.cells[3][4], 175);
+    loaded.lighting.cells[0][0] = 50;
+    assert.equal(loaded.lighting.cells[1][0], 100);
+    assert.equal(M.createMap(type).lighting.cells[0][0], 100);
+  }
+});
+
+const invalidLighting = {
+  'null settings': d => { d.lighting = null; },
+  'negative ambient': d => { d.lighting.ambient = -1; },
+  'excess ambient': d => { d.lighting.ambient = 201; },
+  'string ambient': d => { d.lighting.ambient = '60'; },
+  'missing ambient': d => { delete d.lighting.ambient; },
+  'missing cells': d => { delete d.lighting.cells; },
+  'short row': d => { d.lighting.cells[0].pop(); },
+  'negative cell': d => { d.lighting.cells[0][0] = -1; },
+  'excess cell': d => { d.lighting.cells[0][0] = 201; },
+  'nonfinite cell': d => { d.lighting.cells[0][0] = Infinity; }
+};
+for (const [name, mutate] of Object.entries(invalidLighting)) {
+  test(`reject invalid lighting: ${name}`, () => {
+    const data = save(M.createMap());
+    mutate(data);
+    assert.throws(() => read(data), /освещения/);
+  });
+}

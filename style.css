@@ -43,7 +43,8 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
 #delete-selection { color: #ff7777; }
 #delete-selection:disabled { cursor: default; }
 .selection-filters { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
-.map-mob.selected, .map-object.selected { filter: url('#entity-selection-outline'); }
+.map-mob, .map-object { filter: brightness(var(--entity-lighting, 1)); }
+.map-mob.selected, .map-object.selected { filter: brightness(var(--entity-lighting, 1)) url('#entity-selection-outline'); }
 .map-panel { min-width: 0; }
 .map-viewport { max-width: 100%; overflow: auto; border: 1px solid #615b48; }
 .map-surface { position: relative; width: var(--map-size); height: var(--map-size); background: #465530; touch-action: none; }
@@ -82,6 +83,21 @@ h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
 #map:focus-visible ~ .keyboard-cursor { display: block; }
 .terrain-list { display: grid; grid-template-columns: repeat(4, 52px); gap: 4px; }
 .terrain-list[hidden] { display: none; }
+.lighting-panel[hidden] { display: none; }
+.lighting-panel label { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.lighting-panel output { font-variant-numeric: tabular-nums; color: var(--accent); }
+.lighting-panel input[type="range"] { display: block; width: 100%; margin: 10px 0 14px; accent-color: var(--accent); }
+.lighting-panel button {
+  border: 1px solid #55554f; border-radius: 3px; padding: 6px 8px;
+  background: #30312e; color: inherit; font: inherit; cursor: pointer;
+}
+.lighting-panel button:hover:not(:disabled) { background: #45402e; }
+.lighting-panel button:disabled { opacity: .5; cursor: wait; }
+.lighting-panel button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lighting-presets { display: flex; gap: 4px; margin-bottom: 24px; }
+.lighting-presets button { flex: 1; font-size: 13px; padding-inline: 4px; }
+.lighting-note { margin: 0 0 16px; }
+#reset-lighting { width: 100%; font-size: 13px; }
 .terrain-option {
   display: grid;
   place-items: center;

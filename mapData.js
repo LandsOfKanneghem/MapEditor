@@ -13,13 +13,29 @@
   const NEIGHBORS = [[0, -1, 1], [1, 0, 4], [0, 1, 16], [-1, 0, 64],
     [1, -1, 2], [1, 1, 8], [-1, 1, 32], [-1, -1, 128]];
   const matrix = (value) => Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(value));
+  const createLighting = () => ({ ambient: 100, cells: matrix(100) });
+  const validBrightness = value => Number.isFinite(value) && value >= 0 && value <= 200;
   const inside = (x, y) => x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT;
   const isWater = (terrain) => terrain === TERRAIN['deep-water'] || terrain === TERRAIN['shallow-water'];
 
   function createMap(mapType = 'surface') {
     if (!MAP_TYPES.includes(mapType)) throw new Error('Неизвестный тип карты.');
     return { mapType, tiles: matrix(mapType === 'underground' ? TERRAIN.void : TERRAIN.grass),
-      mobs: [], objects: [], wallStyles: mapType === 'underground' ? matrix(null) : null };
+      mobs: [], objects: [], wallStyles: mapType === 'underground' ? matrix(null) : null,
+      lighting: createLighting() };
+  }
+
+  function readLighting(value) {
+    if (value === undefined) return createLighting();
+    if (!value || !validBrightness(value.ambient) || !Array.isArray(value.cells) || value.cells.length !== HEIGHT ||
+        value.cells.some(row => !Array.isArray(row) || row.length !== WIDTH || row.some(v => !validBrightness(v)))) {
+      throw new Error('Неверные настройки освещения карты: яркость должна быть от 0 до 200%.');
+    }
+    return { ambient: value.ambient, cells: value.cells.map(row => [...row]) };
+  }
+
+  function lightAt(map, x, y) {
+    return (map.lighting?.ambient ?? 100) * (map.lighting?.cells[y]?.[x] ?? 100) / 10000;
   }
 
   function wallInfo(level, x, y) {
@@ -88,7 +104,7 @@
       }
       wallStyles = data.wallStyles.map(row => [...row]);
     }
-    return { mapType, tiles, mobs, objects, wallStyles };
+    return { mapType, tiles, mobs, objects, wallStyles, lighting: readLighting(data.lighting) };
   }
 
   function readDocument(data, mobTypes, objectTypes) {
@@ -115,11 +131,12 @@
       objects: map.objects.map(({ type, x, y }) => ({ type, x, y,
         blocking: objectTypes[type].blocking, interactive: objectTypes[type].interactive })) };
     if (map.wallStyles) saved.wallStyles = map.wallStyles.map(row => [...row]);
+    saved.lighting = { ambient: map.lighting.ambient, cells: map.lighting.cells.map(row => [...row]) };
     return saved;
   }
 
   const api = Object.freeze({ WIDTH, HEIGHT, TERRAIN, COSTS, WALL_TYPES, MAP_TYPES, NEIGHBORS,
-    createMap, wallInfo, readDocument, serialize });
+    createMap, createLighting, lightAt, wallInfo, readDocument, serialize });
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MapData = api;
 })(typeof window === 'undefined' ? globalThis : window);

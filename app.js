@@ -38,7 +38,12 @@
   let mobs = mapDocument.mobs;
   let objects = mapDocument.objects;
   const canvas = document.getElementById('map');
-  const context = canvas.getContext('2d');
+  // Keep original terrain pixels offscreen, so lighting never compounds on repaint.
+  const unlitCanvas = document.createElement('canvas');
+  unlitCanvas.width = canvas.width;
+  unlitCanvas.height = canvas.height;
+  const context = unlitCanvas.getContext('2d');
+  const displayContext = canvas.getContext('2d');
   const surface = document.querySelector('.map-surface');
   const buttons = [...document.querySelectorAll('[data-terrain]')];
   const mobButtons = [...document.querySelectorAll('[data-mob]')];
@@ -50,6 +55,13 @@
   const allyPalette = document.getElementById('ally-palette');
   const objectPalette = document.getElementById('object-palette');
   const wallPalette = document.getElementById('wall-palette');
+  const lightingPalette = document.getElementById('lighting-palette');
+  const ambientInput = document.getElementById('ambient-brightness');
+  const brushInput = document.getElementById('cell-brightness');
+  const ambientValue = document.getElementById('ambient-value');
+  const brushValue = document.getElementById('cell-value');
+  const lightingPresets = [...document.querySelectorAll('[data-ambient]')];
+  const resetLightingButton = document.getElementById('reset-lighting');
   const wallButtons = [...document.querySelectorAll('[data-wall]')];
   const levelButton = document.getElementById('toggle-level');
   const paletteTitle = document.getElementById('terrain-title');
@@ -66,6 +78,7 @@
   let selectedTerrain = TERRAIN.grass;
   let selectedWall = 'monastery';
   let terrainBrush = 'floor';
+  let lightingBrush = 100;
   let selectedMob = 'wolf';
   let selectedAlly = 'wizard';
   let selectedObject = 'crate';
@@ -108,7 +121,7 @@
       x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
   }
 
-  function drawCell(x, y) {
+  function drawUnlitCell(x, y) {
     const terrain = map[y][x];
     const variant = (((x * 73856093) ^ (y * 19349663)) >>> 0) % 3;
     if (terrain === TERRAIN.void) {
@@ -161,6 +174,61 @@
     }
   }
 
+  function drawLitCell(x, y) {
+    const left = x * TILE_SIZE, top = y * TILE_SIZE;
+    displayContext.save();
+    displayContext.filter = `brightness(${window.MapData.lightAt(mapDocument, x, y)})`;
+    displayContext.clearRect(left, top, TILE_SIZE, TILE_SIZE);
+    displayContext.drawImage(unlitCanvas, left, top, TILE_SIZE, TILE_SIZE, left, top, TILE_SIZE, TILE_SIZE);
+    displayContext.restore();
+  }
+
+  function drawCell(x, y) {
+    drawUnlitCell(x, y);
+    drawLitCell(x, y);
+  }
+
+  function lightEntity(entity, cell = entity) {
+    entity.element.style.setProperty('--entity-lighting', window.MapData.lightAt(mapDocument, cell.x, cell.y));
+  }
+
+  function renderLighting() {
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLUMNS; x++) drawLitCell(x, y);
+    for (const entity of [...mobs, ...objects]) lightEntity(entity);
+  }
+
+  function refreshLightingControls() {
+    ambientInput.value = mapDocument.lighting.ambient;
+    ambientValue.value = `${mapDocument.lighting.ambient}%`;
+    brushInput.value = lightingBrush;
+    brushValue.value = `${lightingBrush}%`;
+  }
+
+  function setAmbient(value) {
+    if (!ready || loadButton.disabled) return;
+    endStroke();
+    mapDocument.lighting.ambient = value;
+    refreshLightingControls();
+    renderLighting();
+  }
+
+  ambientInput.addEventListener('input', () => setAmbient(Number(ambientInput.value)));
+  brushInput.addEventListener('input', () => {
+    if (!ready || loadButton.disabled) return;
+    endStroke();
+    lightingBrush = Number(brushInput.value);
+    refreshLightingControls();
+  });
+  for (const button of lightingPresets) button.addEventListener('click', () => setAmbient(Number(button.dataset.ambient)));
+  resetLightingButton.addEventListener('click', () => {
+    if (!ready || loadButton.disabled) return;
+    endStroke();
+    mapDocument.lighting = window.MapData.createLighting();
+    lightingBrush = 100;
+    refreshLightingControls();
+    renderLighting();
+  });
+
   function renderMap() {
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLUMNS; x++) drawCell(x, y);
   }
@@ -195,6 +263,7 @@
       object.element.style.top = `${object.y * TILE_SIZE}px`;
       object.element.dataset.x = object.x;
       object.element.dataset.y = object.y;
+      lightEntity(object);
       return object.element;
     });
     objectLayer.replaceChildren(...elements);
@@ -231,6 +300,7 @@
       mob.element.dataset.x = mob.x;
       mob.element.dataset.y = mob.y;
       mob.element.dataset.team = mob.team;
+      lightEntity(mob);
       return mob.element;
     });
     mobLayer.replaceChildren(...elements);
@@ -322,7 +392,7 @@
   }
 
   function updatePlacementHover(event) {
-    if (!ready || editorMode === 'terrain' || !event.isPrimary || event.pointerType === 'touch') return;
+    if (!ready || editorMode === 'terrain' || editorMode === 'lighting' || !event.isPrimary || event.pointerType === 'touch') return;
     const cell = cellFromPointer(event);
     const hovered = mobs.find(mob => mob.element === event.target) ?? objects.find(object => object.element === event.target) ??
       (cell ? mobAt(cell) ?? objectAt(cell) : null);
@@ -338,6 +408,7 @@
       y: (entityDrag.entity.y + .5) * TILE_SIZE + dy
     });
     const inside = cellFromPoint(point) !== null && target !== null;
+    if (inside) lightEntity(entityDrag.entity, target);
     showPlacementTarget(inside ? target : null, entityDrag.entity);
     return inside ? target : null;
   }
@@ -364,6 +435,13 @@
   }
 
   function paintCell(x, y, dirty) {
+    if (editorMode === 'lighting') {
+      if (mapDocument.lighting.cells[y][x] !== lightingBrush) {
+        mapDocument.lighting.cells[y][x] = lightingBrush;
+        dirty.add(y * COLUMNS + x);
+      }
+      return;
+    }
     if (terrainBrush === 'wall' && mapDocument.mapType === 'underground') {
       const level = mapDocument;
       if (window.MapData.wallInfo(level, x, y)) {
@@ -409,7 +487,14 @@
       if (doubled >= dy) { error += dy; x += sx; }
       if (doubled <= dx) { error += dx; y += sy; }
     }
-    for (const index of dirty) drawCell(index % COLUMNS, Math.floor(index / COLUMNS));
+    for (const index of dirty) {
+      const x = index % COLUMNS, y = Math.floor(index / COLUMNS);
+      if (editorMode === 'lighting') drawLitCell(x, y);
+      else drawCell(x, y);
+    }
+    if (editorMode === 'lighting') for (const entity of [...mobs, ...objects]) {
+      if (dirty.has(entity.y * COLUMNS + entity.x)) lightEntity(entity);
+    }
   }
 
   function paintPointer(event) {
@@ -435,12 +520,13 @@
     mobPalette.hidden = editorMode !== 'mobs';
     allyPalette.hidden = editorMode !== 'allies';
     objectPalette.hidden = editorMode !== 'objects';
+    lightingPalette.hidden = editorMode !== 'lighting';
     for (const button of buttons) {
       button.hidden = button.dataset.terrain === 'void' && !underground;
       button.setAttribute('aria-pressed', String(terrainBrush === 'floor' && TERRAIN[button.dataset.terrain] === selectedTerrain));
     }
     for (const button of wallButtons) button.setAttribute('aria-pressed', String(button.dataset.wall === selectedWall));
-    const title = { terrain: 'Террейн', mobs: 'Враги', allies: 'Союзники', objects: 'Объекты' }[editorMode];
+    const title = { terrain: 'Террейн', mobs: 'Враги', allies: 'Союзники', objects: 'Объекты', lighting: 'Освещение' }[editorMode];
     paletteTitle.textContent = underground ? `${title} — под землёй` : title;
     levelButton.setAttribute('aria-pressed', String(underground));
     levelButton.setAttribute('aria-label', underground ? 'Под землёй' : 'На земле');
@@ -457,6 +543,8 @@
     objects = nextMap.objects;
     selectedTerrain = nextMap.mapType === 'underground' ? TERRAIN['monastery-floor'] : TERRAIN.grass;
     terrainBrush = 'floor';
+    lightingBrush = 100;
+    refreshLightingControls();
     refreshPalette();
     renderMap();
     renderObjects();
@@ -497,6 +585,7 @@
     loadButton.disabled = true;
     saveButton.disabled = true;
     deleteButton.disabled = true;
+    for (const control of [ambientInput, brushInput, resetLightingButton, ...lightingPresets]) control.disabled = true;
     try {
       const data = JSON.parse(await file.text());
       const loaded = window.MapData.readDocument(data, MOB_TYPES, OBJECT_TYPES);
@@ -514,6 +603,7 @@
       loadButton.disabled = false;
       saveButton.disabled = false;
       deleteButton.disabled = !selectedEntity;
+      for (const control of [ambientInput, brushInput, resetLightingButton, ...lightingPresets]) control.disabled = false;
     }
   });
 
@@ -528,7 +618,7 @@
     button.addEventListener('click', () => {
       endStroke();
       editorMode = button.dataset.mode;
-      if (editorMode === 'terrain') selectEntity(null);
+      if (editorMode === 'terrain' || editorMode === 'lighting') selectEntity(null);
       refreshPalette();
       for (const item of modeButtons) item.setAttribute('aria-pressed', String(item === button));
     });
@@ -585,7 +675,7 @@
     surface.setPointerCapture(event.pointerId);
     const clicked = mobs.find(item => item.element === event.target) ?? objects.find(item => item.element === event.target) ??
       mobAt(cell) ?? objectAt(cell);
-    if (editorMode === 'terrain' && !clicked) {
+    if ((editorMode === 'terrain' || editorMode === 'lighting') && !clicked) {
       paintPointer(event);
     } else {
       const entity = clicked ?? (editorMode === 'objects' ? placeObject(cell) : placeMob(cell));
@@ -613,7 +703,7 @@
     if (event.pointerId !== activePointer) return;
     if (!(event.buttons & 1)) { endStroke(); return; }
     if (entityDrag) { updateEntityDrag(event); return; }
-    if (editorMode !== 'terrain') { updatePlacementHover(event); return; }
+    if (editorMode !== 'terrain' && editorMode !== 'lighting') { updatePlacementHover(event); return; }
     const samples = event.getCoalescedEvents?.() ?? [];
     for (const sample of samples.length ? samples : [event]) paintPointer(sample);
   });
@@ -656,7 +746,7 @@
       keyboardCell.y = Math.max(0, Math.min(ROWS - 1, keyboardCell.y + movement[1]));
       updateKeyboardCursor();
     } else if (event.key === ' ' || event.key === 'Enter') {
-      if (editorMode === 'terrain') paintLine(keyboardCell, keyboardCell);
+      if (editorMode === 'terrain' || editorMode === 'lighting') paintLine(keyboardCell, keyboardCell);
       else if (editorMode === 'mobs' || editorMode === 'allies') placeMob(keyboardCell);
       else placeObject(keyboardCell);
     }
@@ -679,6 +769,7 @@
       image.src = src;
     })));
     context.imageSmoothingEnabled = false;
+    displayContext.imageSmoothingEnabled = false;
     activateMap(mapDocument);
     ready = true;
     surface.setAttribute('aria-busy', 'false');
@@ -686,6 +777,7 @@
     for (const button of [...modeButtons, ...mobButtons, ...allyButtons, ...objectButtons]) button.disabled = false;
     for (const button of wallButtons) button.disabled = false;
     levelButton.disabled = false;
+    for (const control of [ambientInput, brushInput, resetLightingButton, ...lightingPresets]) control.disabled = false;
     saveButton.disabled = false;
     loadButton.disabled = false;
     status.textContent = '';
