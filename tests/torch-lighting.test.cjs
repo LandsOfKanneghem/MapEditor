@@ -78,7 +78,7 @@ test('straight, convex and concave mounts follow geometry in all four rotations'
   for (let rotation = 0; rotation < 4; rotation++) {
     for (const kind of ['straight', 'convex', 'concave']) {
       const map = M.createMap('underground');
-      const floors = kind === 'straight' ? [[0, -1]] : kind === 'convex' ? [[0, -1], [-1, 0], [-1, -1]] : [[-1, -1]];
+      const floors = kind === 'straight' ? [[-1, -1], [0, -1], [1, -1], [-1, -2], [0, -2], [1, -2]] : kind === 'convex' ? [[0, -1], [-1, 0], [-1, -1]] : [[-1, -1]];
       for (const floor of floors) { const [x, y] = rotate(floor, rotation); map.tiles[5 + y][5 + x] = M.TERRAIN['cave-earth']; }
       const [dx, dy] = rotate(kind === 'straight' ? [0, -1] : [-1, -1], rotation);
       const facing = Object.keys(O.FACES).find(face => O.FACES[face][0] === dx && O.FACES[face][1] === dy);
@@ -129,7 +129,8 @@ test('v8 preserves lit and unlit variants and wall anchors on targetable floor c
 });
 
 test('v7 migrates wall coordinates onto the floor without changing visual position or light', () => {
-  const map = M.createMap('underground'); map.tiles[5][5] = M.TERRAIN['cave-earth'];
+  const map = M.createMap('underground');
+  for (let y = 4; y <= 6; y++) for (let x = 5; x <= 7; x++) map.tiles[y][x] = M.TERRAIN['cave-earth'];
   const encoded = M.serialize(map, objects); encoded.version = 7;
   encoded.objects = [{ type: 'wall-torch', x: 4, y: 5, facing: 'east', blocking: false, interactive: false }];
   const loaded = read(encoded), torch = loaded.objects[0];
@@ -137,4 +138,18 @@ test('v7 migrates wall coordinates onto the floor without changing visual positi
   assert.equal(O.wallMount(loaded, torch).offsetX, 27);
   assert(O.illuminated(loaded).has('5,5'));
   assert.equal(M.serialize(loaded, objects).version, 8);
+});
+
+test('inside corner overrides adjoining straight mounts without moving the target or light source', () => {
+  for (const type of ['wall-torch', 'unlit-wall-torch']) {
+    const map = M.createMap('underground');
+    for (let y = 4; y <= 8; y++) for (let x = 4; x <= 8; x++) map.tiles[y][x] = M.TERRAIN['cave-earth'];
+    const torch = { type, x: 4, y: 4, wallX: 3, wallY: 4, facing: 'east' };
+    const mount = O.wallMount(map, torch);
+    assert.equal(mount.kind, 'concave');
+    assert.equal(torch.wallX * 48 + 24 + mount.offsetX, 4 * 48);
+    assert.equal(torch.wallY * 48 + 24 + mount.offsetY, 4 * 48);
+    assert.deepEqual(mount.source, { x: 4, y: 4 });
+    assert(O.floorMounts(map, 4, 4).every(item => item.kind === 'concave'));
+  }
 });
