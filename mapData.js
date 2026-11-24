@@ -1,6 +1,7 @@
 /* A document contains one map, with a surface or underground environment. */
 ((root) => {
   'use strict';
+  const ObjectRules = typeof module !== 'undefined' && module.exports ? require('./mapObjects.js') : root.MapObjects;
   const WIDTH = 12, HEIGHT = 12;
   const TERRAIN = Object.freeze({ grass: 0, sand: 1, 'deep-water': 2, dirt: 3,
     swamp: 4, 'shallow-water': 5, 'monastery-floor': 6, 'cave-earth': 7, void: 8 });
@@ -41,6 +42,7 @@
   }
 
   function lightAt(map, x, y) {
+    if ((map._torchCells ?? ObjectRules.illuminated(map)).has(`${x},${y}`)) return 1;
     return clampBrightness(map.lighting?.cells[y]?.[x] ?? map.lighting?.ambient ?? 100) / 100;
   }
 
@@ -98,12 +100,7 @@
     });
     const savedObjects = version < 3 ? [] : data.objects;
     if (!Array.isArray(savedObjects) || savedObjects.length > WIDTH * HEIGHT) throw new Error('Неверный список объектов карты.');
-    const objects = savedObjects.map(object => {
-      if (!object || typeof object.type !== 'string' || !Object.hasOwn(objectTypes, object.type) ||
-          object.blocking !== true || object.interactive !== false) throw new Error('Неверный тип или параметры препятствия.');
-      claim(object);
-      return { type: object.type, x: object.x, y: object.y };
-    });
+    const objects = ObjectRules.readObjects(savedObjects, { mapType, tiles }, mobs);
     let wallStyles = null;
     if (mapType === 'underground') {
       if (!Array.isArray(data.wallStyles) || data.wallStyles.length !== HEIGHT ||
@@ -117,7 +114,7 @@
   }
 
   function readDocument(data, mobTypes, objectTypes) {
-    if (data?.format !== 'kanneghem-map' || ![1, 2, 3, 4, 5, 6].includes(data.version)) {
+    if (data?.format !== 'kanneghem-map' || ![1, 2, 3, 4, 5, 6, 7].includes(data.version)) {
       throw new Error('Неподдерживаемый формат или версия карты.');
     }
     if (data.width !== WIDTH || data.height !== HEIGHT) throw new Error(`Размер карты должен быть ${WIDTH}×${HEIGHT}.`);
@@ -134,11 +131,12 @@
   }
 
   function serialize(map, objectTypes) {
-    const saved = { format: 'kanneghem-map', version: 6, width: WIDTH, height: HEIGHT, mapType: map.mapType,
+    const saved = { format: 'kanneghem-map', version: 7, width: WIDTH, height: HEIGHT, mapType: map.mapType,
       tiles: map.tiles.map(row => row.map(t => NAMES[t])),
       mobs: map.mobs.map(({ type, team, x, y }) => ({ type, team, x, y })),
-      objects: map.objects.map(({ type, x, y }) => ({ type, x, y,
-        blocking: objectTypes[type].blocking, interactive: objectTypes[type].interactive })) };
+      objects: map.objects.map(({ type, x, y, facing }) => ({ type, x, y,
+        ...(type === 'wall-torch' ? { facing } : {}),
+        blocking: ObjectRules.TYPES[type].blocking, interactive: false })) };
     if (map.wallStyles) saved.wallStyles = map.wallStyles.map(row => [...row]);
     saved.lighting = { mode: 'absolute', ambient: clampBrightness(map.lighting.ambient),
       cells: map.lighting.cells.map(row => row.map(v => v === null ? null : clampBrightness(v))) };

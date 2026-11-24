@@ -20,9 +20,8 @@
     wizard: { name: 'Маг', team: 'ally', src: 'assets/mobs/wizard.png', displaySize: { width: 72, height: 86 }, padding: { top: 4.777778, right: 8.4, bottom: 4.777778, left: 8.4 } },
     monk: { name: 'Монах', team: 'ally', src: 'assets/mobs/monk.png', displaySize: { width: 72, height: 86 }, padding: { top: 7.166667, right: 10.8, bottom: 4.777778, left: 10.8 } }
   });
-  const OBJECT_TYPES = Object.freeze({
-    crate: { name: 'Ящик', src: 'assets/objects/crate.png', blocking: true, interactive: false }
-  });
+  const OBJECT_TYPES = Object.freeze(Object.fromEntries(Object.entries(window.MapObjects.TYPES)
+    .map(([type, definition]) => [type, { ...definition, src: `assets/objects/${type}.png` }])));
   const landLayers = [
     { terrain: TERRAIN.dirt, image: 'dirt', level: 1 },
     { terrain: TERRAIN.swamp, image: 'swamp', level: 2 },
@@ -55,6 +54,9 @@
   const mobPalette = document.getElementById('mob-palette');
   const allyPalette = document.getElementById('ally-palette');
   const objectPalette = document.getElementById('object-palette');
+  const smallObjectPalette = document.getElementById('small-object-palette');
+  const objectMode = () => editorMode === 'objects' || editorMode === 'small-objects';
+  let lastPointerPoint = null;
   const wallPalette = document.getElementById('wall-palette');
   const lightingPalette = document.getElementById('lighting-palette');
   const ambientInput = document.getElementById('ambient-brightness');
@@ -191,10 +193,16 @@
   }
 
   function lightEntity(entity, cell = entity) {
-    entity.element.style.setProperty('--entity-lighting', window.MapData.lightAt(mapDocument, cell.x, cell.y));
+    if (!entity.element) return;
+    entity.element.style.setProperty('--entity-lighting', OBJECT_TYPES[entity.type]?.lightRadius ? 1 : window.MapData.lightAt(mapDocument, cell.x, cell.y));
+  }
+
+  function cacheTorchLight() {
+    Object.defineProperty(mapDocument, '_torchCells', { value: window.MapObjects.illuminated(mapDocument), writable: true, configurable: true });
   }
 
   function renderLighting() {
+    cacheTorchLight();
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLUMNS; x++) drawLitCell(x, y);
     for (const entity of [...mobs, ...objects]) lightEntity(entity);
   }
@@ -249,8 +257,29 @@
     return Boolean(mobAt(cell, except) || objectAt(cell, except));
   }
 
+  function objectDraft(cell, type, except = null) {
+    const draft = { type, x: cell.x, y: cell.y };
+    if (type === 'wall-torch') {
+      const faces = window.MapObjects.wallFaces(mapDocument, cell.x, cell.y);
+      if (except && faces.includes(except.facing)) draft.facing = except.facing;
+      else {
+        const px = lastPointerPoint ? lastPointerPoint.x / TILE_SIZE - cell.x - .5 : 0;
+        const py = lastPointerPoint ? lastPointerPoint.y / TILE_SIZE - cell.y - .5 : .5;
+        faces.sort((a, b) => {
+          const [ax, ay] = window.MapObjects.FACES[a], [bx, by] = window.MapObjects.FACES[b];
+          return bx * px + by * py - ax * px - ay * py;
+        });
+        draft.facing = faces[0];
+      }
+    }
+    return draft;
+  }
+
   function canPlace(cell, except = null) {
-    return map[cell.y][cell.x] !== TERRAIN.void && !isOccupied(cell, except);
+    const type = except ? (objects.includes(except) ? except.type : null) : (objectMode() ? selectedObject : null);
+    if (type) return window.MapObjects.canPlace(mapDocument, objectDraft(cell, type, except), mobs, except);
+    return map[cell.y][cell.x] !== TERRAIN.void && !mobAt(cell, except)
+      && !objects.some(object => object !== except && OBJECT_TYPES[object.type].blocking && object.x === cell.x && object.y === cell.y);
   }
 
   function renderObjects() {
@@ -263,19 +292,25 @@
         image.draggable = false;
         object.element = image;
       }
-      object.element.style.left = `${object.x * TILE_SIZE}px`;
-      object.element.style.top = `${object.y * TILE_SIZE}px`;
+      const [dx, dy] = object.type === 'wall-torch' ? window.MapObjects.FACES[object.facing] : [0, 0];
+      object.element.style.left = `${object.x * TILE_SIZE + dx * 12}px`;
+      object.element.style.top = `${object.y * TILE_SIZE + dy * 12}px`;
+      object.element.dataset.type = object.type;
+      object.element.dataset.facing = object.facing ?? '';
+      object.element.style.scale = object.facing === 'east' ? '-1 1' : '';
+      object.element.classList.toggle('small-object', OBJECT_TYPES[object.type].category === 'small');
       object.element.dataset.x = object.x;
       object.element.dataset.y = object.y;
       lightEntity(object);
       return object.element;
     });
     objectLayer.replaceChildren(...elements);
+    renderLighting();
   }
 
   function placeObject(cell) {
     if (!canPlace(cell)) return null;
-    const object = { type: selectedObject, x: cell.x, y: cell.y };
+    const object = objectDraft(cell, selectedObject);
     objects.push(object);
     renderObjects();
     return object;
@@ -385,7 +420,8 @@
   }
 
   function cellFromPointer(event) {
-    return cellFromPoint(pointFromPointer(event));
+    lastPointerPoint = pointFromPointer(event);
+    return cellFromPoint(lastPointerPoint);
   }
 
   function showPlacementTarget(cell, except = null) {
@@ -424,6 +460,11 @@
       status.textContent = 'Сначала уберите существо или объект с этой клетки.';
       return;
     }
+    const previous = map[y][x];
+    map[y][x] = terrain;
+    const invalidObject = objects.some(object => !window.MapObjects.canPlace(mapDocument, object, mobs, object));
+    map[y][x] = previous;
+    if (invalidObject) { status.textContent = 'Сначала перенесите объект, которому мешает изменение поверхности.'; return; }
     const level = mapDocument;
     if (level.wallStyles && terrain !== TERRAIN.void) {
       level.wallStyles[y][x] = selectedWall;
@@ -441,6 +482,7 @@
 
   function paintCell(x, y, dirty) {
     if (editorMode === 'lighting') {
+      if (mapDocument._torchCells?.has(`${x},${y}`)) return;
       if (mapDocument.lighting.cells[y][x] !== lightingBrush) {
         mapDocument.lighting.cells[y][x] = lightingBrush;
         dirty.add(y * COLUMNS + x);
@@ -497,6 +539,7 @@
       if (editorMode === 'lighting') drawLitCell(x, y);
       else drawCell(x, y);
     }
+    if (editorMode !== 'lighting' && dirty.size) renderLighting();
     if (editorMode === 'lighting') for (const entity of [...mobs, ...objects]) {
       if (dirty.has(entity.y * COLUMNS + entity.x)) lightEntity(entity);
     }
@@ -525,13 +568,15 @@
     mobPalette.hidden = editorMode !== 'mobs';
     allyPalette.hidden = editorMode !== 'allies';
     objectPalette.hidden = editorMode !== 'objects';
+    smallObjectPalette.hidden = editorMode !== 'small-objects';
     lightingPalette.hidden = editorMode !== 'lighting';
     for (const button of buttons) {
       button.hidden = button.dataset.terrain === 'void' && !underground;
       button.setAttribute('aria-pressed', String(terrainBrush === 'floor' && TERRAIN[button.dataset.terrain] === selectedTerrain));
     }
+    for (const button of objectButtons) button.setAttribute('aria-pressed', String(button.dataset.object === selectedObject));
     for (const button of wallButtons) button.setAttribute('aria-pressed', String(button.dataset.wall === selectedWall));
-    const title = { terrain: 'Террейн', mobs: 'Враги', allies: 'Союзники', objects: 'Объекты', lighting: 'Освещение' }[editorMode];
+    const title = { terrain: 'Террейн', mobs: 'Враги', allies: 'Союзники', objects: 'Массивные объекты', 'small-objects': 'Небольшие объекты', lighting: 'Освещение' }[editorMode];
     paletteTitle.textContent = underground ? `${title} — под землёй` : title;
     levelButton.setAttribute('aria-pressed', String(underground));
     levelButton.setAttribute('aria-label', underground ? 'Под землёй' : 'На земле');
@@ -546,6 +591,7 @@
     map = nextMap.tiles;
     mobs = nextMap.mobs;
     objects = nextMap.objects;
+    cacheTorchLight();
     selectedTerrain = nextMap.mapType === 'underground' ? TERRAIN['monastery-floor'] : TERRAIN.grass;
     terrainBrush = 'floor';
     lightingBrush = 100;
@@ -623,6 +669,8 @@
     button.addEventListener('click', () => {
       endStroke();
       editorMode = button.dataset.mode;
+      if (editorMode === 'objects') selectedObject = 'crate';
+      if (editorMode === 'small-objects' && OBJECT_TYPES[selectedObject].category !== 'small') selectedObject = 'torch';
       if (editorMode === 'terrain' || editorMode === 'lighting') selectEntity(null);
       refreshPalette();
       for (const item of modeButtons) item.setAttribute('aria-pressed', String(item === button));
@@ -678,12 +726,15 @@
     activePointer = event.pointerId;
     lastCell = null;
     surface.setPointerCapture(event.pointerId);
-    const clicked = mobs.find(item => item.element === event.target) ?? objects.find(item => item.element === event.target) ??
-      mobAt(cell) ?? objectAt(cell);
+    const placingTorchOnMob = editorMode === 'small-objects' && selectedObject === 'torch' && !objectAt(cell);
+    const placingMobOnTorch = (editorMode === 'mobs' || editorMode === 'allies') && !mobAt(cell)
+      && objectAt(cell) && !OBJECT_TYPES[objectAt(cell).type].blocking;
+    const clicked = placingTorchOnMob || placingMobOnTorch ? null
+      : mobs.find(item => item.element === event.target) ?? objects.find(item => item.element === event.target) ?? mobAt(cell) ?? objectAt(cell);
     if ((editorMode === 'terrain' || editorMode === 'lighting') && !clicked) {
       paintPointer(event);
     } else {
-      const entity = clicked ?? (editorMode === 'objects' ? placeObject(cell) : placeMob(cell));
+      const entity = clicked ?? (objectMode() ? placeObject(cell) : placeMob(cell));
       selectEntity(entity);
       if (!entity) {
         endStroke();
@@ -727,8 +778,8 @@
     if (entityDrag) {
       const target = updateEntityDrag(event);
       if (target && canPlace(target, entityDrag.entity)) {
-        entityDrag.entity.x = target.x;
-        entityDrag.entity.y = target.y;
+        if (objects.includes(entityDrag.entity)) Object.assign(entityDrag.entity, objectDraft(target, entityDrag.entity.type, entityDrag.entity));
+        else { entityDrag.entity.x = target.x; entityDrag.entity.y = target.y; }
       }
     }
     endStroke();

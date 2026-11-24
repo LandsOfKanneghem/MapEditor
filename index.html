@@ -7,6 +7,7 @@
   <title>Редактор карты</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
+  <script src="mapObjects.js" defer></script>
   <script src="mapData.js" defer></script>
   <script src="undergroundRenderer.js" defer></script>
   <script src="app.js" defer></script>
@@ -46,10 +47,13 @@
           <path d="M5 22V3M5 4c5-5 9 5 15 0v11c-6 5-10-5-15 0"/>
         </svg>
       </button>
-      <button type="button" class="toolbar-button" data-mode="objects" aria-label="Непроходимые объекты" title="Непроходимые объекты" aria-pressed="false" disabled>
+      <button type="button" class="toolbar-button" data-mode="objects" aria-label="Массивные объекты" title="Массивные объекты" aria-pressed="false" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
           <path d="m3 6 9-3 9 3v13l-9 3-9-3ZM3 6l9 3 9-3M12 9v13M5 10l5 9M5 18l5-7M14 11l5 7M14 19l5-9"/>
         </svg>
+      </button>
+      <button type="button" class="toolbar-button" data-mode="small-objects" aria-label="Небольшие объекты" title="Небольшие объекты" aria-pressed="false" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 Q18 7 16 11 Q12 16 8 11 Q6 8 12 2Z" fill="#ffc94a" stroke="#a95b1d"/><path d="M10 13H14L13 22H11Z" fill="#8e5a2b" stroke="#d9ba76"/></svg>
       </button>
       <button type="button" class="toolbar-button" data-mode="lighting" aria-label="Освещение" title="Освещение карты" aria-pressed="false" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -193,6 +197,10 @@
         <button type="button" class="terrain-option" data-object="crate" aria-label="Ящик" title="Ящик — непроходимое препятствие" aria-pressed="true" disabled>
           <img class="object-swatch" src="assets/objects/crate.png" alt="" width="48" height="48" draggable="false">
         </button>
+      </div>
+      <div id="small-object-palette" class="terrain-list" role="group" aria-label="Небольшие объекты" hidden>
+        <button type="button" class="terrain-option" data-object="torch" aria-label="Обычный факел" title="Обычный факел" aria-pressed="false" disabled><img class="object-swatch" src="assets/objects/torch.png" alt="" width="48" height="48" draggable="false"></button>
+        <button type="button" class="terrain-option" data-object="wall-torch" aria-label="Настенный факел" title="Настенный факел — на стене рядом с полом" aria-pressed="false" disabled><img class="object-swatch" src="assets/objects/wall-torch.png" alt="" width="48" height="48" draggable="false"></button>
       </div>
     </aside>
   </main>
