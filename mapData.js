@@ -99,8 +99,7 @@
       return { type: mob.type, team, x: mob.x, y: mob.y };
     });
     const savedObjects = version < 3 ? [] : data.objects;
-    if (!Array.isArray(savedObjects) || savedObjects.length > WIDTH * HEIGHT) throw new Error('Неверный список объектов карты.');
-    const objects = ObjectRules.readObjects(savedObjects, { mapType, tiles }, mobs);
+    const objects = ObjectRules.readObjects(savedObjects, { mapType, tiles }, mobs, version);
     let wallStyles = null;
     if (mapType === 'underground') {
       if (!Array.isArray(data.wallStyles) || data.wallStyles.length !== HEIGHT ||
@@ -114,7 +113,7 @@
   }
 
   function readDocument(data, mobTypes, objectTypes) {
-    if (data?.format !== 'kanneghem-map' || ![1, 2, 3, 4, 5, 6, 7].includes(data.version)) {
+    if (data?.format !== 'kanneghem-map' || ![1, 2, 3, 4, 5, 6, 7, 8].includes(data.version)) {
       throw new Error('Неподдерживаемый формат или версия карты.');
     }
     if (data.width !== WIDTH || data.height !== HEIGHT) throw new Error(`Размер карты должен быть ${WIDTH}×${HEIGHT}.`);
@@ -131,12 +130,11 @@
   }
 
   function serialize(map, objectTypes) {
-    const saved = { format: 'kanneghem-map', version: 7, width: WIDTH, height: HEIGHT, mapType: map.mapType,
+    const saved = { format: 'kanneghem-map', version: 8, width: WIDTH, height: HEIGHT, mapType: map.mapType,
       tiles: map.tiles.map(row => row.map(t => NAMES[t])),
       mobs: map.mobs.map(({ type, team, x, y }) => ({ type, team, x, y })),
-      objects: map.objects.map(({ type, x, y, facing }) => ({ type, x, y,
-        ...(type === 'wall-torch' ? { facing: ObjectRules.wallMount(map, { type, x, y, facing })?.facing ?? facing } : {}),
-        blocking: ObjectRules.TYPES[type].blocking, interactive: false })) };
+      objects: map.objects.map(object => ({ ...ObjectRules.canonicalObject(map, object),
+        blocking: ObjectRules.TYPES[object.type].blocking, interactive: ObjectRules.TYPES[object.type].interactive })) };
     if (map.wallStyles) saved.wallStyles = map.wallStyles.map(row => [...row]);
     saved.lighting = { mode: 'absolute', ambient: clampBrightness(map.lighting.ambient),
       cells: map.lighting.cells.map(row => row.map(v => v === null ? null : clampBrightness(v))) };

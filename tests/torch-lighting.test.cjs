@@ -39,7 +39,7 @@ test('wall torch is anchored to a valid wall face and its light starts on the ad
   for (let y = 5; y <= 7; y++) for (let x = 3; x <= 7; x++) map.tiles[y][x] = M.TERRAIN['cave-earth'];
   map.objects.push({ type: 'wall-torch', x: 5, y: 4, facing: 'south' });
   const loaded = read(M.serialize(map, objects));
-  assert.deepEqual(loaded.objects, map.objects);
+  assert.deepEqual(loaded.objects, map.objects.map(object => O.canonicalObject(map, object)));
   const lit = O.illuminated(loaded);
   assert(lit.has('5,5'));
   assert(lit.has('5,7'));
@@ -48,15 +48,15 @@ test('wall torch is anchored to a valid wall face and its light starts on the ad
     const saved = M.serialize(map, objects); saved.objects[0].facing = facing;
     assert.throws(() => read(saved));
   }
-  const saved = M.serialize(map, objects); saved.objects[0].y = 5;
-  assert.throws(() => read(saved), 'wall torches cannot float on a floor');
+  const saved = M.serialize(map, objects); saved.objects[0].wallY = 5;
+  assert.throws(() => read(saved), 'wall torches must retain a valid wall anchor');
 });
 test('small objects coexist with creatures and round-trip, but massive objects cannot', () => {
   const map = M.createMap();
   map.mobs = [{ type: 'wolf', team: 'enemy', x: 5, y: 5 }];
   map.objects = [{ type: 'torch', x: 5, y: 5 }];
   const encoded = M.serialize(map, objects);
-  assert.equal(encoded.version, 7);
+  assert.equal(encoded.version, 8);
   assert.equal(encoded.objects[0].blocking, false);
   assert.deepEqual(read(encoded).objects, map.objects);
   encoded.objects[0] = { type: 'crate', x: 5, y: 5, blocking: true, interactive: false };
@@ -90,7 +90,7 @@ test('straight, convex and concave mounts follow geometry in all four rotations'
       assert.equal(mount.offsetY, dy * (kind === 'concave' ? 24 : 27));
       assert(O.canPlace(map, torch));
       map.objects = [torch];
-      assert.deepEqual(read(M.serialize(map, objects)).objects, map.objects);
+      assert.deepEqual(read(M.serialize(map, objects)).objects, map.objects.map(object => O.canonicalObject(map, object)));
     }
   }
 });
@@ -105,4 +105,36 @@ test('legacy face placement snaps to a convex corner and lights from the diagona
   assert(O.illuminated(map).has('2,4'), 'D5 is centered on the diagonal cell');
   const loaded = read(M.serialize(map, objects));
   assert.equal(loaded.objects[0].facing, 'north-west');
+});
+
+test('v8 preserves lit and unlit variants and wall anchors on targetable floor cells', () => {
+  const map = M.createMap('underground');
+  for (let y = 2; y < 10; y++) for (let x = 2; x < 10; x++) map.tiles[y][x] = M.TERRAIN['monastery-floor'];
+  map.lighting.ambient = 60;
+  const mount = O.floorMounts(map, 5, 2).find(mount => mount.facing === 'south');
+  assert(mount);
+  map.objects = [{ type: 'unlit-wall-torch', x: 5, y: 2, wallX: mount.wallX, wallY: mount.wallY, facing: mount.facing },
+    { type: 'unlit-torch', x: 7, y: 7 }];
+  const encoded = M.serialize(map, objects), loaded = read(encoded);
+  assert.deepEqual(loaded.objects, map.objects);
+  assert(encoded.objects.every(object => object.interactive === true && object.blocking === false));
+  assert.equal(O.illuminated(loaded).size, 0);
+  loaded.objects[0].type = 'wall-torch';
+  assert.equal(M.lightAt(loaded, 5, 2), 1);
+  loaded.objects[0].type = 'unlit-wall-torch';
+  assert.equal(M.lightAt(loaded, 5, 2), .6);
+  assert.equal(O.floorMounts(map, 5, 5).length, 0, 'no floating wall torches away from walls');
+  delete encoded.objects[0].wallX;
+  assert.throws(() => read(encoded), 'v8 requires explicit wall attachment');
+});
+
+test('v7 migrates wall coordinates onto the floor without changing visual position or light', () => {
+  const map = M.createMap('underground'); map.tiles[5][5] = M.TERRAIN['cave-earth'];
+  const encoded = M.serialize(map, objects); encoded.version = 7;
+  encoded.objects = [{ type: 'wall-torch', x: 4, y: 5, facing: 'east', blocking: false, interactive: false }];
+  const loaded = read(encoded), torch = loaded.objects[0];
+  assert.deepEqual(torch, { type: 'wall-torch', x: 5, y: 5, wallX: 4, wallY: 5, facing: 'east' });
+  assert.equal(O.wallMount(loaded, torch).offsetX, 27);
+  assert(O.illuminated(loaded).has('5,5'));
+  assert.equal(M.serialize(loaded, objects).version, 8);
 });

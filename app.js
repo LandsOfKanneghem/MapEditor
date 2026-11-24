@@ -194,7 +194,7 @@
 
   function lightEntity(entity, cell = entity) {
     if (!entity.element) return;
-    entity.element.style.setProperty('--entity-lighting', OBJECT_TYPES[entity.type]?.lightRadius ? 1 : window.MapData.lightAt(mapDocument, cell.x, cell.y));
+    entity.element.style.setProperty('--entity-lighting', window.MapObjects.isLit(entity) ? 1 : window.MapData.lightAt(mapDocument, cell.x, cell.y));
   }
 
   function cacheTorchLight() {
@@ -259,18 +259,14 @@
 
   function objectDraft(cell, type, except = null) {
     const draft = { type, x: cell.x, y: cell.y };
-    if (type === 'wall-torch') {
-      const faces = window.MapObjects.wallFaces(mapDocument, cell.x, cell.y);
-      if (except && faces.includes(except.facing)) draft.facing = except.facing;
-      else {
-        const px = lastPointerPoint ? lastPointerPoint.x / TILE_SIZE - cell.x - .5 : 0;
-        const py = lastPointerPoint ? lastPointerPoint.y / TILE_SIZE - cell.y - .5 : .5;
-        faces.sort((a, b) => {
-          const [ax, ay] = window.MapObjects.FACES[a], [bx, by] = window.MapObjects.FACES[b];
-          return bx * px + by * py - ax * px - ay * py;
-        });
-        draft.facing = faces[0];
-      }
+    if (window.MapObjects.isWallTorch(draft)) {
+      const mounts = window.MapObjects.floorMounts(mapDocument, cell.x, cell.y);
+      const point = lastPointerPoint ?? { x: (cell.x + .5) * TILE_SIZE, y: (cell.y + .5) * TILE_SIZE };
+      const distance = mount => Math.hypot((mount.wallX + .5) * TILE_SIZE + mount.offsetX - point.x,
+        (mount.wallY + .5) * TILE_SIZE + mount.offsetY - point.y);
+      mounts.sort((a, b) => distance(a) - distance(b));
+      const mount = (except && mounts.find(item => item.facing === except.facing)) || mounts[0];
+      if (mount) Object.assign(draft, { wallX: mount.wallX, wallY: mount.wallY, facing: mount.facing });
     }
     return draft;
   }
@@ -287,14 +283,14 @@
       if (!object.element) {
         const image = document.createElement('img');
         image.className = 'map-object';
-        image.src = object.type === 'wall-torch' ? 'assets/objects/wall-torch-top.png' : OBJECT_TYPES[object.type].src;
+        image.src = `assets/objects/${window.MapObjects.spriteName(object)}.png`;
         image.alt = OBJECT_TYPES[object.type].name;
         image.draggable = false;
         object.element = image;
       }
-      const mount = object.type === 'wall-torch' ? window.MapObjects.wallMount(mapDocument, object) : null;
-      object.element.style.left = `${object.x * TILE_SIZE + (mount?.offsetX ?? 0)}px`;
-      object.element.style.top = `${object.y * TILE_SIZE + (mount?.offsetY ?? 0)}px`;
+      const mount = window.MapObjects.isWallTorch(object) ? window.MapObjects.wallMount(mapDocument, object) : null;
+      object.element.style.left = `${(mount ? object.wallX : object.x) * TILE_SIZE + (mount?.offsetX ?? 0)}px`;
+      object.element.style.top = `${(mount ? object.wallY : object.y) * TILE_SIZE + (mount?.offsetY ?? 0)}px`;
       object.element.dataset.mountKind = mount?.kind ?? '';
       object.element.dataset.mountFacing = mount?.facing ?? '';
       object.element.dataset.type = object.type;
@@ -358,7 +354,7 @@
 
   function setEntitySelected(entity, selected) {
     entity.element.classList.toggle('selected', selected);
-    if (entity.type === 'wall-torch') entity.element.style.clipPath = `inset(${selected ? 14 : 15}px)`;
+    if (window.MapObjects.isWallTorch(entity)) entity.element.style.clipPath = `inset(${selected ? 14 : 15}px)`;
     const template = MOB_TYPES[entity.type];
     if (template) {
       const { padding, displaySize } = template;
@@ -729,7 +725,7 @@
     activePointer = event.pointerId;
     lastCell = null;
     surface.setPointerCapture(event.pointerId);
-    const placingTorchOnMob = editorMode === 'small-objects' && selectedObject === 'torch' && !objectAt(cell)
+    const placingTorchOnMob = editorMode === 'small-objects' && window.MapObjects.isTorch({ type: selectedObject }) && !objectAt(cell)
       && !objects.some(item => item.element === event.target);
     const placingMobOnTorch = (editorMode === 'mobs' || editorMode === 'allies') && !mobAt(cell)
       && objectAt(cell) && !OBJECT_TYPES[objectAt(cell).type].blocking;
@@ -859,7 +855,8 @@
         .map(name => [name, `assets/terrain/${name}.png`]),
       ...Object.entries(MOB_TYPES).map(([name, template]) => [name, template.src]),
       ...Object.entries(OBJECT_TYPES).map(([name, template]) => [name, template.src]),
-      ['wall-torch-top', 'assets/objects/wall-torch-top.png']
+      ['wall-torch-top', 'assets/objects/wall-torch-top.png'],
+      ['unlit-wall-torch-top', 'assets/objects/unlit-wall-torch-top.png']
     ];
     await Promise.all(assets.map(([name, src]) => new Promise((resolve, reject) => {
       const image = new Image();
