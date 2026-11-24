@@ -72,3 +72,37 @@ test('overlapping lights do not stack and old maps still load without torches', 
   const old = M.serialize(map, objects); old.version = 6;
   assert.equal(read(old).objects.length, 0);
 });
+
+test('straight, convex and concave mounts follow geometry in all four rotations', () => {
+  const rotate = ([x, y], n) => { for (let i = 0; i < n; i++) [x, y] = [-y, x]; return [x || 0, y || 0]; };
+  for (let rotation = 0; rotation < 4; rotation++) {
+    for (const kind of ['straight', 'convex', 'concave']) {
+      const map = M.createMap('underground');
+      const floors = kind === 'straight' ? [[0, -1]] : kind === 'convex' ? [[0, -1], [-1, 0], [-1, -1]] : [[-1, -1]];
+      for (const floor of floors) { const [x, y] = rotate(floor, rotation); map.tiles[5 + y][5 + x] = M.TERRAIN['cave-earth']; }
+      const [dx, dy] = rotate(kind === 'straight' ? [0, -1] : [-1, -1], rotation);
+      const facing = Object.keys(O.FACES).find(face => O.FACES[face][0] === dx && O.FACES[face][1] === dy);
+      const torch = { type: 'wall-torch', x: 5, y: 5, facing };
+      const mount = O.wallMount(map, torch);
+      assert.equal(mount.kind, kind);
+      assert.deepEqual(mount.source, { x: 5 + dx, y: 5 + dy });
+      assert.equal(mount.offsetX, dx * (kind === 'concave' ? 24 : 27));
+      assert.equal(mount.offsetY, dy * (kind === 'concave' ? 24 : 27));
+      assert(O.canPlace(map, torch));
+      map.objects = [torch];
+      assert.deepEqual(read(M.serialize(map, objects)).objects, map.objects);
+    }
+  }
+});
+test('legacy face placement snaps to a convex corner and lights from the diagonal floor', () => {
+  const map = M.createMap('underground');
+  for (let y = 0; y < 12; y++) for (let x = 0; x < 12; x++) if (x < 5 || y < 5) map.tiles[y][x] = M.TERRAIN['cave-earth'];
+  map.objects = [{ type: 'wall-torch', x: 5, y: 5, facing: 'west' }];
+  const mount = O.wallMount(map, map.objects[0]);
+  assert.equal(mount.kind, 'convex');
+  assert.equal(mount.facing, 'north-west');
+  assert.deepEqual(mount.source, { x: 4, y: 4 });
+  assert(O.illuminated(map).has('2,4'), 'D5 is centered on the diagonal cell');
+  const loaded = read(M.serialize(map, objects));
+  assert.equal(loaded.objects[0].facing, 'north-west');
+});

@@ -135,7 +135,7 @@
       tiles: map.tiles.map(row => row.map(t => NAMES[t])),
       mobs: map.mobs.map(({ type, team, x, y }) => ({ type, team, x, y })),
       objects: map.objects.map(({ type, x, y, facing }) => ({ type, x, y,
-        ...(type === 'wall-torch' ? { facing } : {}),
+        ...(type === 'wall-torch' ? { facing: ObjectRules.wallMount(map, { type, x, y, facing })?.facing ?? facing } : {}),
         blocking: ObjectRules.TYPES[type].blocking, interactive: false })) };
     if (map.wallStyles) saved.wallStyles = map.wallStyles.map(row => [...row]);
     saved.lighting = { mode: 'absolute', ambient: clampBrightness(map.lighting.ambient),

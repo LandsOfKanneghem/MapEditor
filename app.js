@@ -287,17 +287,19 @@
       if (!object.element) {
         const image = document.createElement('img');
         image.className = 'map-object';
-        image.src = OBJECT_TYPES[object.type].src;
+        image.src = object.type === 'wall-torch' ? 'assets/objects/wall-torch-top.png' : OBJECT_TYPES[object.type].src;
         image.alt = OBJECT_TYPES[object.type].name;
         image.draggable = false;
         object.element = image;
       }
-      const [dx, dy] = object.type === 'wall-torch' ? window.MapObjects.FACES[object.facing] : [0, 0];
-      object.element.style.left = `${object.x * TILE_SIZE + dx * 12}px`;
-      object.element.style.top = `${object.y * TILE_SIZE + dy * 12}px`;
+      const mount = object.type === 'wall-torch' ? window.MapObjects.wallMount(mapDocument, object) : null;
+      object.element.style.left = `${object.x * TILE_SIZE + (mount?.offsetX ?? 0)}px`;
+      object.element.style.top = `${object.y * TILE_SIZE + (mount?.offsetY ?? 0)}px`;
+      object.element.dataset.mountKind = mount?.kind ?? '';
+      object.element.dataset.mountFacing = mount?.facing ?? '';
       object.element.dataset.type = object.type;
       object.element.dataset.facing = object.facing ?? '';
-      object.element.style.scale = object.facing === 'east' ? '-1 1' : '';
+      setEntitySelected(object, object === selectedEntity);
       object.element.classList.toggle('small-object', OBJECT_TYPES[object.type].category === 'small');
       object.element.dataset.x = object.x;
       object.element.dataset.y = object.y;
@@ -356,6 +358,7 @@
 
   function setEntitySelected(entity, selected) {
     entity.element.classList.toggle('selected', selected);
+    if (entity.type === 'wall-torch') entity.element.style.clipPath = `inset(${selected ? 14 : 15}px)`;
     const template = MOB_TYPES[entity.type];
     if (template) {
       const { padding, displaySize } = template;
@@ -539,7 +542,7 @@
       if (editorMode === 'lighting') drawLitCell(x, y);
       else drawCell(x, y);
     }
-    if (editorMode !== 'lighting' && dirty.size) renderLighting();
+    if (editorMode !== 'lighting' && dirty.size) renderObjects();
     if (editorMode === 'lighting') for (const entity of [...mobs, ...objects]) {
       if (dirty.has(entity.y * COLUMNS + entity.x)) lightEntity(entity);
     }
@@ -726,7 +729,8 @@
     activePointer = event.pointerId;
     lastCell = null;
     surface.setPointerCapture(event.pointerId);
-    const placingTorchOnMob = editorMode === 'small-objects' && selectedObject === 'torch' && !objectAt(cell);
+    const placingTorchOnMob = editorMode === 'small-objects' && selectedObject === 'torch' && !objectAt(cell)
+      && !objects.some(item => item.element === event.target);
     const placingMobOnTorch = (editorMode === 'mobs' || editorMode === 'allies') && !mobAt(cell)
       && objectAt(cell) && !OBJECT_TYPES[objectAt(cell).type].blocking;
     const clicked = placingTorchOnMob || placingMobOnTorch ? null
@@ -854,7 +858,8 @@
       ...['monastery-floor', 'cave-earth', 'monastery-floor-edges', 'cave-earth-edges', 'wall-monastery', 'wall-dungeon']
         .map(name => [name, `assets/terrain/${name}.png`]),
       ...Object.entries(MOB_TYPES).map(([name, template]) => [name, template.src]),
-      ...Object.entries(OBJECT_TYPES).map(([name, template]) => [name, template.src])
+      ...Object.entries(OBJECT_TYPES).map(([name, template]) => [name, template.src]),
+      ['wall-torch-top', 'assets/objects/wall-torch-top.png']
     ];
     await Promise.all(assets.map(([name, src]) => new Promise((resolve, reject) => {
       const image = new Image();
