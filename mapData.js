@@ -94,7 +94,7 @@
       if (!mob || typeof mob.type !== 'string' || !Object.hasOwn(mobTypes, mob.type)) throw new Error('В карте указан неизвестный моб.');
       claim(mob);
       const team = version < 4 ? mobTypes[mob.type].team : mob.team;
-      if (!['ally', 'enemy'].includes(team) || (['wizard', 'monk'].includes(mob.type) && team !== 'ally'))
+      if (!['ally', 'enemy'].includes(team) || (['wizard', 'monk', 'warrior'].includes(mob.type) && team !== 'ally'))
         throw new Error('Неверная сторона существа: ally или enemy.');
       return { type: mob.type, team, x: mob.x, y: mob.y };
     });
