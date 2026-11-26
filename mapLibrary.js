@@ -1,4 +1,4 @@
-// Shared local map-folder picker. Keep identical in Battle and MapEditor.
+// Local map-folder picker. Pass native file handles to the editor for in-place saving.
 (() => {
   'use strict';
   const mode = { mode: 'read' };
@@ -23,7 +23,7 @@
     const files = [];
     for await (const [name, entry] of handle.entries()) {
       if (entry.kind === 'directory') files.push(...await scan(entry, `${prefix}${name}/`));
-      else if (/\.json$/i.test(name)) files.push({ path: prefix + name, getFile: () => entry.getFile() });
+      else if (/\.json$/i.test(name)) files.push({ path: prefix + name, handle: entry, getFile: () => entry.getFile() });
     }
     return files;
   }
@@ -119,7 +119,7 @@
         const selected = files.find(file => file.path === select.value);
         if (!selected) return;
         busy = true; controls();
-        try { await onLoad(await selected.getFile()); }
+        try { await onLoad(await selected.getFile(), selected.handle ?? null); }
         catch (error) { errorMessage(error); }
         finally { busy = false; controls(); }
       });

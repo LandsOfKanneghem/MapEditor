@@ -91,6 +91,8 @@
   let entityDrag = null;
   let selectedEntity = null;
   let ready = false;
+  let currentFileHandle = null;
+  let currentFileName = `map-${COLUMNS}x${ROWS}.json`;
   let activePointer = null;
   let lastCell = null;
   let keyboardCell = { x: 0, y: 0 };
@@ -587,6 +589,8 @@
   function activateMap(nextMap) {
     endStroke();
     selectEntity(null);
+    currentFileHandle = null;
+    currentFileName = `map-${COLUMNS}x${ROWS}.json`;
     mapDocument = nextMap;
     map = nextMap.tiles;
     mobs = nextMap.mobs;
@@ -608,28 +612,75 @@
     status.textContent = '';
   });
 
-  saveButton.addEventListener('click', () => {
-    if (!ready) return;
-    endStroke();
-    const data = window.MapData.serialize(mapDocument, OBJECT_TYPES);
-    const blob = new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' });
+  const jsonFileTypes = [{ description: 'Карта JSON', accept: { 'application/json': ['.json'] } }];
+  function downloadMap(text) {
+    const blob = new Blob([text], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `map-${COLUMNS}x${ROWS}.json`;
+    link.download = currentFileName;
     document.body.appendChild(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
-    status.textContent = 'Карта сохранена.';
-  });
+    status.textContent = 'Карта сохранена скачиванием.';
+  }
 
-  loadButton.addEventListener('click', () => {
+  saveButton.addEventListener('click', async () => {
+    if (!ready || saveButton.disabled || loadButton.disabled) return;
     endStroke();
-    fileInput.click();
+    saveButton.disabled = loadButton.disabled = true;
+    let stream;
+    try {
+      const text = JSON.stringify(window.MapData.serialize(mapDocument, OBJECT_TYPES), null, 2) + '\n';
+      let handle = currentFileHandle;
+      if (handle) {
+        if (await handle.requestPermission({ mode: 'readwrite' }) !== 'granted') {
+          status.textContent = 'Не удалось сохранить карту: доступ на запись не разрешён.';
+          return;
+        }
+      } else if (typeof window.showSaveFilePicker === 'function') {
+        try {
+          handle = await window.showSaveFilePicker({ suggestedName: currentFileName, types: jsonFileTypes });
+        } catch (error) {
+          if (!['SecurityError', 'NotSupportedError'].includes(error.name)) throw error;
+        }
+      }
+      if (!handle) { downloadMap(text); return; }
+      stream = await handle.createWritable();
+      await stream.write(text);
+      await stream.close();
+      stream = null;
+      currentFileHandle = handle;
+      currentFileName = handle.name;
+      status.textContent = `Карта сохранена: ${currentFileName}.`;
+    } catch (error) {
+      if (stream) { try { await stream.abort(); } catch {} }
+      if (error.name !== 'AbortError') status.textContent = `Не удалось сохранить карту: ${error.message}`;
+    } finally {
+      saveButton.disabled = loadButton.disabled = false;
+    }
   });
 
-  async function loadMapFile(file) {
+  loadButton.addEventListener('click', async () => {
+    if (!ready || loadButton.disabled) return;
+    endStroke();
+    if (typeof window.showOpenFilePicker !== 'function') { fileInput.click(); return; }
+    saveButton.disabled = loadButton.disabled = true;
+    try {
+      const [handle] = await window.showOpenFilePicker({ multiple: false, types: jsonFileTypes });
+      const file = await handle.getFile();
+      saveButton.disabled = loadButton.disabled = false;
+      await loadMapFile(file, handle);
+    } catch (error) {
+      if (['SecurityError', 'NotSupportedError'].includes(error.name)) fileInput.click();
+      else if (error.name !== 'AbortError') status.textContent = `Не удалось открыть карту: ${error.message}`;
+    } finally {
+      saveButton.disabled = loadButton.disabled = false;
+    }
+  });
+
+  async function loadMapFile(file, handle = null) {
     if (!ready || !file || loadButton.disabled) return;
     endStroke();
     loadButton.disabled = true;
@@ -643,6 +694,8 @@
       endStroke();
       selectEntity(null);
       activateMap(loaded);
+      currentFileHandle = handle;
+      currentFileName = file.name;
       status.textContent = data.version === 5 ? 'Загружен выбранный уровень карты старого формата.' : 'Карта загружена.';
     } catch (error) {
       status.textContent = error instanceof SyntaxError
