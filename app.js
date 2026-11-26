@@ -629,8 +629,7 @@
     fileInput.click();
   });
 
-  fileInput.addEventListener('change', async () => {
-    const file = fileInput.files[0];
+  async function loadMapFile(file) {
     if (!ready || !file || loadButton.disabled) return;
     endStroke();
     loadButton.disabled = true;
@@ -656,7 +655,8 @@
       deleteButton.disabled = !selectedEntity;
       for (const control of [ambientInput, brushInput, resetLightingButton, ...lightingPresets, ...brushPresets]) control.disabled = false;
     }
-  });
+  }
+  fileInput.addEventListener('change', () => loadMapFile(fileInput.files[0]));
 
   const grid = document.getElementById('map-grid');
   const gridButton = document.getElementById('toggle-grid');
@@ -878,6 +878,10 @@
     saveButton.disabled = false;
     loadButton.disabled = false;
     status.textContent = '';
+    window.MapLibrary.mount({
+      host: document.querySelector('.editor-toolbar'), storageKey: 'editor',
+      isBusy: () => !ready || loadButton.disabled, onLoad: loadMapFile
+    });
   }
 
   loadTiles().catch(error => {
