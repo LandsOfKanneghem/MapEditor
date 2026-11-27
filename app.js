@@ -20,7 +20,8 @@
     wizard: { name: 'Маг', team: 'ally', src: 'assets/mobs/wizard.png', displaySize: { width: 72, height: 86 }, padding: { top: 4.777778, right: 8.4, bottom: 4.777778, left: 8.4 } },
     monk: { name: 'Монах', team: 'ally', src: 'assets/mobs/monk.png', displaySize: { width: 72, height: 86 }, padding: { top: 7.166667, right: 10.8, bottom: 4.777778, left: 10.8 } },
     warrior: { name: 'Воин', team: 'ally', src: 'assets/mobs/warrior.png', displaySize: { width: 72, height: 86 }, padding: { top: 4, right: 13, bottom: 4, left: 12 } },
-    archer: { name: 'Лучник', team: 'ally', src: 'assets/mobs/archer.png', displaySize: { width: 72, height: 86 }, padding: { top: 4, right: 4, bottom: 4, left: 4 } }
+    archer: { name: 'Лучник', team: 'ally', src: 'assets/mobs/archer.png', displaySize: { width: 72, height: 86 }, padding: { top: 4, right: 4, bottom: 4, left: 4 } },
+    halfling: { name: 'Полурослик', team: 'ally', src: 'assets/mobs/halfling.png', displaySize: { width: 72, height: 86 }, padding: { top: 4, right: 4, bottom: 4, left: 4 } }
   });
   const OBJECT_TYPES = Object.freeze(Object.fromEntries(Object.entries(window.MapObjects.TYPES)
     .map(([type, definition]) => [type, { ...definition, src: `assets/objects/${type}.png` }])));
@@ -854,7 +855,7 @@
   let contextMob = null;
   function closeMobMenu() { mobMenu.hidden = true; contextMob = null; }
   teamOption.addEventListener('click', () => {
-    if (contextMob && mobs.includes(contextMob) && !['wizard', 'monk', 'warrior', 'archer'].includes(contextMob.type)) {
+    if (contextMob && mobs.includes(contextMob) && !['wizard', 'monk', 'warrior', 'archer', 'halfling'].includes(contextMob.type)) {
       contextMob.team = contextMob.team === 'ally' ? 'enemy' : 'ally';
       renderMobs();
     }
@@ -866,7 +867,7 @@
     if (!ready || loadButton.disabled) return;
     const cell = cellFromPointer(event);
     const mob = mobs.find(item => item.element === event.target) ?? (cell && mobAt(cell));
-    if (!mob || ['wizard', 'monk', 'warrior', 'archer'].includes(mob.type)) return;
+    if (!mob || ['wizard', 'monk', 'warrior', 'archer', 'halfling'].includes(mob.type)) return;
     endStroke();
     selectEntity(mob);
     contextMob = mob;
