@@ -8,6 +8,7 @@
   const MOB_TYPES = Object.freeze({
     wolf: { name: 'Волк', team: 'enemy', src: 'assets/mobs/wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 43, right: 3.6, bottom: 4.777778, left: 3.6 } },
     'black-wolf': { name: 'Чёрный волк', team: 'enemy', src: 'assets/mobs/black-wolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 43, right: 3.6, bottom: 4.777778, left: 3.6 } },
+    'bear': { name: 'Медведь', team: 'enemy', src: 'assets/mobs/bear.png', displaySize: { width: 90, height: 108 }, padding: { top: 30, right: 4, bottom: 4, left: 4 } },
     werewolf: { name: 'Оборотень', team: 'enemy', src: 'assets/mobs/werewolf.png', displaySize: { width: 90, height: 108 }, padding: { top: 4.777778, right: 9.6, bottom: 4.777778, left: 8.4 } },
     hound: { name: 'Гончая', team: 'enemy', src: 'assets/mobs/hound.png', displaySize: { width: 72, height: 86 }, padding: { top: 22.694444, right: 7.2, bottom: 4.777778, left: 6 } },
     'dragon-turtle': { name: 'Драконовая черепаха', team: 'enemy', src: 'assets/mobs/dragon-turtle.png', displaySize: { width: 90, height: 108 }, padding: { top: 44, right: 2, bottom: 5, left: 2 } },
