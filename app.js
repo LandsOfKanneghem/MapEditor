@@ -591,6 +591,7 @@
   }
 
   function activateMap(nextMap) {
+    window.EquipmentEditor.close();
     endStroke();
     selectEntity(null);
     currentFileHandle = null;
@@ -852,10 +853,18 @@
   const teamOption = document.createElement('button');
   teamOption.type = 'button';
   teamOption.setAttribute('role', 'menuitem');
-  mobMenu.appendChild(teamOption);
+  const equipmentOption = document.createElement('button');
+  equipmentOption.type = 'button';
+  equipmentOption.textContent = 'Экипировка';
+  equipmentOption.setAttribute('role', 'menuitem');
+  mobMenu.append(teamOption, equipmentOption);
   document.body.appendChild(mobMenu);
   let contextMob = null;
   function closeMobMenu() { mobMenu.hidden = true; contextMob = null; }
+  equipmentOption.addEventListener('click', () => {
+    if (contextMob && mobs.includes(contextMob)) window.EquipmentEditor.open(contextMob, MOB_TYPES[contextMob.type].name);
+    closeMobMenu();
+  });
   teamOption.addEventListener('click', () => {
     if (contextMob && mobs.includes(contextMob) && !['wizard', 'monk', 'warrior', 'archer', 'halfling', 'druid'].includes(contextMob.type)) {
       contextMob.team = contextMob.team === 'ally' ? 'enemy' : 'ally';
@@ -869,15 +878,18 @@
     if (!ready || loadButton.disabled) return;
     const cell = cellFromPointer(event);
     const mob = mobs.find(item => item.element === event.target) ?? (cell && mobAt(cell));
-    if (!mob || ['wizard', 'monk', 'warrior', 'archer', 'halfling', 'druid'].includes(mob.type)) return;
+    if (!mob) return;
+    const hero = window.MapEquipment.HEROES.includes(mob.type) && mob.team === 'ally';
     endStroke();
     selectEntity(mob);
     contextMob = mob;
     teamOption.textContent = `Поменять сторону: ${mob.team === 'ally' ? 'враги' : 'союзники'}`;
+    teamOption.hidden = hero;
+    equipmentOption.hidden = !hero;
     mobMenu.hidden = false;
     mobMenu.style.left = `${Math.max(0, Math.min(event.clientX, innerWidth - mobMenu.offsetWidth))}px`;
     mobMenu.style.top = `${Math.max(0, Math.min(event.clientY, innerHeight - mobMenu.offsetHeight))}px`;
-    teamOption.focus();
+    (hero ? equipmentOption : teamOption).focus();
   });
   document.addEventListener('pointerdown', event => { if (!mobMenu.contains(event.target)) closeMobMenu(); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMobMenu(); });
@@ -887,6 +899,7 @@
   deleteButton.addEventListener('click', deleteSelection);
   document.addEventListener('keydown', event => {
     if (event.key !== 'Delete') return;
+    if (window.EquipmentEditor.isOpen()) return;
     if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]')) return;
     if (deleteSelection()) event.preventDefault();
   });

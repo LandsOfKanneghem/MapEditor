@@ -1,0 +1,38 @@
+.mob-context-menu button[hidden] { display: none; }
+#hero-equipment-dialog {
+  box-sizing: border-box; width: max-content; max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px); padding: 8px; overflow: auto;
+  color: #ead7af; background: #3b332b; border: 3px ridge #baa168;
+}
+#hero-equipment-dialog::backdrop { background: #0006; }
+.equipment-editor-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.equipment-editor-toolbar button, .equipment-editor-toolbar select {
+  font: inherit; color: #ead7af; border: 1px solid #8e6a3d; border-radius: 0; background: #302b26; padding: 4px 8px;
+}
+.equipment-editor-toolbar button { cursor: pointer; }
+.equipment-editor-toolbar button:disabled { opacity: .35; cursor: default; }
+.equipment-editor-navigation { display: flex; gap: 4px; }
+.equipment-editor-content { display: flex; align-items: flex-start; gap: 12px; width: max-content; }
+#equipment-catalog { display: grid; grid-template-columns: repeat(10, 60px); }
+#hero-equipment-slots, #hero-consumable-slots { display: grid; grid-template-columns: repeat(3, 60px); }
+#hero-consumable-slots { margin-top: 4px; }
+.editor-equipment-slot {
+  box-sizing: border-box; display: flex; align-items: center; justify-content: center;
+  width: 60px; height: 60px; min-width: 0; padding: 1px; border: 2px solid #8e6a3d; border-radius: 0;
+  background: #321920 url('assets/homm2/leather.png') center/cover;
+  box-shadow: inset 1px 1px #d3b372, inset -1px -1px #4b321d; cursor: pointer;
+}
+.editor-equipment-slot img { width: 54px; height: 54px; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
+.editor-equipment-slot .equipment-outline { opacity: .7; }
+.editor-equipment-slot .ring { width: 27px; height: 27px; }
+.editor-equipment-slot:hover, .editor-equipment-slot:focus-visible { border-color: #e9cf8a; }
+.editor-equipment-slot.selected { border-color: #ffe233; }
+.editor-equipment-slot.compatible { border-color: #8ba866; }
+.editor-equipment-slot.locked { filter: grayscale(1); opacity: .5; cursor: default; }
+.editor-equipment-tooltip {
+  position: fixed; z-index: 2; max-width: min(360px, calc(100vw - 32px));
+  box-sizing: border-box; padding: 8px; border: 3px ridge #baa168;
+  color: #ead7af; background: #251d16; pointer-events: none; font-size: 14px;
+}
+.editor-equipment-tooltip h3 { margin: 0 0 5px; color: #f4db8e; font-size: 17px; }
+.editor-equipment-tooltip p { margin: 3px 0 0; color: inherit; font-size: inherit; line-height: 1.3; }

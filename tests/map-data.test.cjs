@@ -70,7 +70,7 @@ for (const mapType of ['surface', 'underground']) {
     map.mobs.push({ type: 'wolf', team: 'enemy', x: 4, y: 4, element: { ignored: true } });
     map.objects.push({ type: 'crate', x: 5, y: 4 });
     const encoded = save(map);
-    assert.equal(encoded.version, 8);
+    assert.equal(encoded.version, 9);
     assert.equal(encoded.mapType, mapType);
     assert.equal(encoded.levels, undefined);
     assert.equal(encoded.activeLevel, undefined);
@@ -106,7 +106,7 @@ for (const activeLevel of ['surface', 'underground']) {
     assert.equal(loaded.mapType, activeLevel);
     assert.equal(loaded.mobs.length, 1);
     assert.equal(loaded.mobs[0].type, activeLevel === 'surface' ? 'wolf' : 'wizard');
-    assert.deepEqual(save(loaded), { ...(activeLevel === 'surface' ? surface : underground), version: 8 });
+    assert.deepEqual(save(loaded), { ...(activeLevel === 'surface' ? surface : underground), version: 9 });
     assert.equal(save(loaded).levels, undefined);
   });
 }

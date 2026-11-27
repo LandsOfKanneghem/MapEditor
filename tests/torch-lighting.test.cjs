@@ -56,7 +56,7 @@ test('small objects coexist with creatures and round-trip, but massive objects c
   map.mobs = [{ type: 'wolf', team: 'enemy', x: 5, y: 5 }];
   map.objects = [{ type: 'torch', x: 5, y: 5 }];
   const encoded = M.serialize(map, objects);
-  assert.equal(encoded.version, 8);
+  assert.equal(encoded.version, 9);
   assert.equal(encoded.objects[0].blocking, false);
   assert.deepEqual(read(encoded).objects, map.objects);
   encoded.objects[0] = { type: 'crate', x: 5, y: 5, blocking: true, interactive: false };
@@ -137,7 +137,7 @@ test('v7 migrates wall coordinates onto the floor without changing visual positi
   assert.deepEqual(torch, { type: 'wall-torch', x: 5, y: 5, wallX: 4, wallY: 5, facing: 'east' });
   assert.equal(O.wallMount(loaded, torch).offsetX, 27);
   assert(O.illuminated(loaded).has('5,5'));
-  assert.equal(M.serialize(loaded, objects).version, 8);
+  assert.equal(M.serialize(loaded, objects).version, 9);
 });
 
 test('inside corner overrides adjoining straight mounts without moving the target or light source', () => {
