@@ -244,3 +244,14 @@ test('creatures can change side while hero sides remain locked', () => {
   data.mobs[0] = { type: 'wizard', team: 'enemy', x: 3, y: 3 };
   assert.throws(() => read(data));
 });
+
+
+test('archer maps round-trip as allies and cannot assign the new hero to enemies', () => {
+  const types = { ...mobTypes, archer: { team: 'ally' } };
+  const map = M.createMap();
+  map.mobs.push({ type: 'archer', team: 'ally', x: 2, y: 3 });
+  const document = save(map);
+  assert.deepEqual(M.readDocument(document, types, objectTypes).mobs, map.mobs);
+  document.mobs[0].team = 'enemy';
+  assert.throws(() => M.readDocument(document, types, objectTypes));
+});
