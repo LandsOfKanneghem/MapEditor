@@ -19,6 +19,10 @@
 .hero-attribute-head > :first-child { text-align: left; }
 .hero-attribute-row { padding: 7px 0; border-bottom: 1px solid #b99c72; }
 .hero-attribute-value { text-align: center; font-weight: bold; }
+.hero-attribute-summary { text-align: center; }
+.hero-attribute-progress { display: block; font-size: 11px; margin-top: 2px; white-space: nowrap; }
+.hero-attribute-progress[hidden] { display: none; }
+.hero-attribute-cost-note { margin: 12px 0 0; color: inherit; font-size: 12px; line-height: 1.4; }
 .hero-allocation-controls output { min-width: 38px; text-align: center; font-variant-numeric: tabular-nums; }
 .hero-stats-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
 @media (max-width: 480px) {

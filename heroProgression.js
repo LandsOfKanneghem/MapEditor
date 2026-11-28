@@ -5,6 +5,7 @@
   const Equipment = node ? require('./mapEquipment.js') : root.MapEquipment;
   const ATTRIBUTES = Object.freeze(['vit', 'str', 'att', 'int', 'wis', 'cha', 'luc']);
   const MIN_LEVEL = 1, MAX_LEVEL = 30;
+  const ATTRIBUTE_SOFT_CAP = 16;
   const BONUSES = Object.freeze({
     'battle-hardened': Object.freeze({ two: 1, one: 2, minLevel: 8 }),
     veteran: Object.freeze({ two: 2, one: 3, minLevel: 16 })
@@ -41,10 +42,16 @@
       return result;
     }, { two: 0, one: 0 });
   }
+  function investment(progression, stat) {
+    const spent = [progression.allocations, ...Object.values(progression.bonuses ?? {})]
+      .reduce((total, allocations) => total + 2 * allocations[stat].two + allocations[stat].one, 0);
+    const excess = Math.max(0, spent - ATTRIBUTE_SOFT_CAP);
+    const costPerPoint = spent < ATTRIBUTE_SOFT_CAP ? 1 : 2;
+    return { spent, value: Math.min(spent, ATTRIBUTE_SOFT_CAP) + Math.floor(excess / 2),
+      pending: excess % 2, costPerPoint, nextCost: costPerPoint - excess % 2 };
+  }
   function attributes(progression) {
-    return Object.fromEntries(ATTRIBUTES.map(stat => [stat,
-      [progression.allocations, ...Object.values(progression.bonuses ?? {})]
-        .reduce((total, allocations) => total + 2 * allocations[stat].two + allocations[stat].one, 0)]));
+    return Object.fromEntries(ATTRIBUTES.map(stat => [stat, investment(progression, stat).value]));
   }
   function normalizeAllocation(value, cap, two, one) {
     if (!record(value) || Object.keys(value).some(stat => !ATTRIBUTES.includes(stat))) invalid();
@@ -112,7 +119,7 @@
     }
     return false;
   }
-  const api = Object.freeze({ ATTRIBUTES, MIN_LEVEL, MAX_LEVEL, BONUSES, create, normalize, read, used, remaining, attributes, changeLevel, allocate, reconcileBonuses });
+  const api = Object.freeze({ ATTRIBUTES, MIN_LEVEL, MAX_LEVEL, ATTRIBUTE_SOFT_CAP, BONUSES, create, normalize, read, used, remaining, investment, attributes, changeLevel, allocate, reconcileBonuses });
   if (node) module.exports = api;
   else root.HeroProgression = api;
 })(typeof window === 'undefined' ? globalThis : window);

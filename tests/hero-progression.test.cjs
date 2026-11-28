@@ -62,8 +62,8 @@ test('all levels can spend their full budgets and normalized drafts do not share
     assert.deepEqual(P.remaining(draft), { two: 0, one: 0 });
     const copy = P.normalize(draft);
     P.allocate(copy, 'str', 2, -1);
-    assert.equal(P.attributes(draft).str, level * 2);
-    assert.equal(P.attributes(copy).str, (level - 1) * 2);
+    assert.equal(P.investment(draft, 'str').spent, level * 2);
+    assert.equal(P.investment(copy, 'str').spent, (level - 1) * 2);
   }
 });
 

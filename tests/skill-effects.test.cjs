@@ -71,13 +71,13 @@ test('training bonuses stack but each skill increases any attribute at most once
   assert(!P.allocate(progression,'int',1,1,skills));
   assert.equal(progression.bonuses['battle-hardened'].int.two,1);
   assert.equal(progression.bonuses.veteran.int.two,1);
-  assert.equal(P.attributes(progression).int,36);
+  assert.equal(P.attributes(progression).int,26);
   assert(P.allocate(progression,'vit',2,1,skills));
   for(const stat of ['vit','str','wis','cha','att']) assert(P.allocate(progression,stat,1,1,skills));
   assert.deepEqual(P.remaining(progression,undefined,skills),{two:0,one:0});
   assert.deepEqual(P.normalize(progression,skills),progression);
   assert(P.allocate(progression,'int',2,-1,skills));
-  assert.equal(P.attributes(progression).int,34);
+  assert.equal(P.attributes(progression).int,25);
   assert.equal(progression.allocations.int.two,16,'undo restores a bonus before normal levels');
 });
 
@@ -85,9 +85,9 @@ test('removing a training skill removes only its allocated bonuses; lowering lev
   const progression=spentLevels(),skills=['battle-hardened','veteran'];
   P.allocate(progression,'int',2,1,skills);P.allocate(progression,'int',2,1,skills);
   const hardened=P.reconcileBonuses(progression,['battle-hardened']);
-  assert.equal(P.attributes(hardened).int,34);
+  assert.equal(P.attributes(hardened).int,25);
   assert.equal(hardened.bonuses.veteran,undefined);
-  assert.equal(P.attributes(P.reconcileBonuses(progression,[])).int,32);
+  assert.equal(P.attributes(P.reconcileBonuses(progression,[])).int,24);
   assert.throws(()=>P.normalize(progression,[]));
   const invalid=JSON.parse(JSON.stringify(progression));invalid.bonuses.veteran.int.one=1;
   assert.throws(()=>P.normalize(invalid,skills));

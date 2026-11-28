@@ -44,9 +44,9 @@
   const quickHands = Object.freeze({ id: 'quick-hands', name: 'Быстрые руки', minLevel: 4, prerequisite: null,
     description: 'Использование расходников с пояса стоит на 1 ОД меньше, минимум 0 ОД.' });
   const hardened = Object.freeze({ id: 'battle-hardened', name: 'Закаленный в бою', minLevel: 8, prerequisite: null,
-    description: 'Дополнительное повышение: один атрибут на +2 и два других на +1.' });
+    description: 'Дополнительные вложения: 2 очка в один атрибут и по 1 очку в два других.' });
   const veteran = Object.freeze({ id: 'veteran', name: 'Ветеран', minLevel: 16, prerequisite: hardened.id,
-    description: 'Дополнительное повышение: два разных атрибута на +2 и три других на +1. Складывается с «Закаленным в бою».' });
+    description: 'Дополнительные вложения: по 2 очка в два разных атрибута и по 1 очку в три других. Складывается с «Закаленным в бою».' });
   catalog.push(quickHands, hardened, veteran);
   GROUPS.push(Object.freeze({ name: 'Особые навыки', branches: Object.freeze([
     Object.freeze({ id: 'quick-hands', name: '', skills: Object.freeze([quickHands]) }),

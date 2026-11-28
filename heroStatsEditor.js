@@ -17,8 +17,9 @@
         <output id="hero-budget-two"></output><output id="hero-budget-one"></output>
       </div>
     </div>
-    <div class="hero-attribute-head" aria-hidden="true"><span>Атрибут</span><span>Значение</span><span>Повышения +2</span><span>Повышения +1</span></div>
+    <div class="hero-attribute-head" aria-hidden="true"><span>Атрибут</span><span>Значение</span><span>Очки +2</span><span>Очки +1</span></div>
     <div id="hero-attribute-rows"></div>
+    <p class="hero-attribute-cost-note">После 16 вложенных очков каждые 2 дают +1. Неполное повышение сохраняется.</p>
     <div class="hero-stats-actions">
       <button type="button" id="save-hero-stats">Сохранить</button>
       <button type="button" id="close-hero-stats">Закрыть без сохранения</button>
@@ -36,7 +37,14 @@
     const value = document.createElement('output');
     value.className = 'hero-attribute-value';
     value.setAttribute('aria-label', `Значение ${stat.toUpperCase()}`);
-    row.append(label, value);
+    const summary = document.createElement('div');
+    summary.className = 'hero-attribute-summary';
+    const pending = document.createElement('small');
+    pending.className = 'hero-attribute-progress';
+    pending.textContent = '1/2 до +1';
+    pending.hidden = true;
+    summary.append(value, pending);
+    row.append(label, summary);
     for (const amount of [2, 1]) {
       const group = document.createElement('div');
       group.className = 'hero-allocation-controls';
@@ -49,7 +57,7 @@
         button.textContent = delta < 0 ? '−' : '+';
         button.dataset.amount = amount;
         button.dataset.delta = delta;
-        button.setAttribute('aria-label', `${delta < 0 ? 'Отменить повышение' : 'Повысить'} ${stat.toUpperCase()} на ${amount}`);
+        button.setAttribute('aria-label', `${delta < 0 ? 'Вернуть' : 'Вложить'} ${amount} ${amount === 1 ? 'очко' : 'очка'} ${delta < 0 ? 'из' : 'в'} ${stat.toUpperCase()}`);
         button.addEventListener('click', () => { Rules.allocate(draft, stat, amount, delta, hero.skills ?? []); render(); });
         if (delta > 0) group.append(count);
         group.append(button);
@@ -68,7 +76,10 @@
     dialog.querySelector('[data-level-delta="1"]').disabled = draft.level === Rules.MAX_LEVEL;
     for (const [stat, row] of statRows) {
       const available = Rules.remaining(draft, stat, hero.skills ?? []);
+      const investment = Rules.investment(draft, stat);
       row.querySelector('.hero-attribute-value').value = attributes[stat];
+      row.querySelector('.hero-attribute-progress').hidden = investment.pending === 0;
+      row.querySelector('.hero-attribute-summary').title = `Вложено очков: ${investment.spent}. Для следующего +1 нужно ещё ${investment.nextCost}.`;
       for (const amount of [2, 1]) {
         const key = amount === 2 ? 'two' : 'one';
         row.querySelector(`output[data-amount="${amount}"]`).value = `${amount}×${available[key]}`;
