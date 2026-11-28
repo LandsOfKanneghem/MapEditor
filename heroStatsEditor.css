@@ -19,7 +19,8 @@
 .hero-attribute-head > :first-child { text-align: left; }
 .hero-attribute-row { padding: 7px 0; border-bottom: 1px solid #b99c72; }
 .hero-attribute-value { text-align: center; font-weight: bold; }
-.hero-attribute-summary { text-align: center; }
+.hero-attribute-summary { text-align: center; white-space: nowrap; }
+.hero-attribute-rate { font-size: 12px; }
 .hero-attribute-progress { display: block; font-size: 11px; margin-top: 2px; white-space: nowrap; }
 .hero-attribute-progress[hidden] { display: none; }
 .hero-attribute-cost-note { margin: 12px 0 0; color: inherit; font-size: 12px; line-height: 1.4; }

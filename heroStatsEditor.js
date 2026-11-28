@@ -39,11 +39,13 @@
     value.setAttribute('aria-label', `Значение ${stat.toUpperCase()}`);
     const summary = document.createElement('div');
     summary.className = 'hero-attribute-summary';
+    const rate = document.createElement('span');
+    rate.className = 'hero-attribute-rate';
     const pending = document.createElement('small');
     pending.className = 'hero-attribute-progress';
     pending.textContent = '1/2 до +1';
     pending.hidden = true;
-    summary.append(value, pending);
+    summary.append(value, rate, pending);
     row.append(label, summary);
     for (const amount of [2, 1]) {
       const group = document.createElement('div');
@@ -78,6 +80,7 @@
       const available = Rules.remaining(draft, stat, hero.skills ?? []);
       const investment = Rules.investment(draft, stat);
       row.querySelector('.hero-attribute-value').value = attributes[stat];
+      row.querySelector('.hero-attribute-rate').textContent = ` (${investment.costPerPoint}:1)`;
       row.querySelector('.hero-attribute-progress').hidden = investment.pending === 0;
       row.querySelector('.hero-attribute-summary').title = `Вложено очков: ${investment.spent}. Для следующего +1 нужно ещё ${investment.nextCost}.`;
       for (const amount of [2, 1]) {
