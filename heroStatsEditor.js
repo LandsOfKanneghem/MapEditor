@@ -50,7 +50,7 @@
         button.dataset.amount = amount;
         button.dataset.delta = delta;
         button.setAttribute('aria-label', `${delta < 0 ? 'Отменить повышение' : 'Повысить'} ${stat.toUpperCase()} на ${amount}`);
-        button.addEventListener('click', () => { Rules.allocate(draft, stat, amount, delta); render(); });
+        button.addEventListener('click', () => { Rules.allocate(draft, stat, amount, delta, hero.skills ?? []); render(); });
         if (delta > 0) group.append(count);
         group.append(button);
       }
@@ -60,20 +60,21 @@
     statRows.set(stat, row);
   }
   function render() {
-    const total = Rules.remaining(draft), attributes = Rules.attributes(draft);
+    const total = Rules.remaining(draft, undefined, hero.skills ?? []), attributes = Rules.attributes(draft);
     dialog.querySelector('#hero-level').value = draft.level;
     dialog.querySelector('#hero-budget-two').value = `2×${total.two}`;
     dialog.querySelector('#hero-budget-one').value = `1×${total.one}`;
     dialog.querySelector('[data-level-delta="-1"]').disabled = draft.level === Rules.MIN_LEVEL;
     dialog.querySelector('[data-level-delta="1"]').disabled = draft.level === Rules.MAX_LEVEL;
     for (const [stat, row] of statRows) {
-      const available = Rules.remaining(draft, stat);
+      const available = Rules.remaining(draft, stat, hero.skills ?? []);
       row.querySelector('.hero-attribute-value').value = attributes[stat];
       for (const amount of [2, 1]) {
         const key = amount === 2 ? 'two' : 'one';
         row.querySelector(`output[data-amount="${amount}"]`).value = `${amount}×${available[key]}`;
         row.querySelector(`button[data-amount="${amount}"][data-delta="1"]`).disabled = available[key] === 0;
-        row.querySelector(`button[data-amount="${amount}"][data-delta="-1"]`).disabled = draft.allocations[stat][key] === 0;
+        row.querySelector(`button[data-amount="${amount}"][data-delta="-1"]`).disabled = draft.allocations[stat][key]
+          + Object.values(draft.bonuses ?? {}).reduce((sum, allocations) => sum + allocations[stat][key], 0) === 0;
       }
     }
   }
@@ -81,8 +82,10 @@
     button.addEventListener('click', () => { Rules.changeLevel(draft, Number(button.dataset.levelDelta)); render(); });
   }
   dialog.querySelector('#save-hero-stats').addEventListener('click', () => {
-    hero.progression = Rules.normalize(draft);
-    if (hero.skills !== undefined) hero.skills = window.HeroSkills.reconcile(hero.skills, hero.progression.level);
+    const skills = window.HeroSkills.reconcile(hero.skills ?? [], draft.level);
+    hero.progression = Rules.normalize(draft, skills);
+    if (hero.skills !== undefined) hero.skills = skills;
+    window.EquipmentModel.reconcileSkills(hero);
     dialog.close();
   });
   dialog.querySelector('#close-hero-stats').addEventListener('click', () => dialog.close());

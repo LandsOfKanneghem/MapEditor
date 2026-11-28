@@ -64,7 +64,7 @@
       button.disabled = !!reason;
       button.classList.toggle('selected', chosen);
       button.setAttribute('aria-pressed', String(chosen));
-      button.title = chosen ? 'Снять навык вместе с зависимыми навыками.' : reason || 'Выбрать навык';
+      button.title = [Rules.BY_ID[id].description, chosen ? 'Снять навык вместе с зависимыми навыками.' : reason || 'Выбрать навык'].filter(Boolean).join('\n');
     }
     const query = search.value.trim().toLocaleLowerCase('ru');
     for (const { section, branches } of groups) {
@@ -75,6 +75,8 @@
   search.addEventListener('input', render);
   dialog.querySelector('#save-hero-skills').addEventListener('click', () => {
     hero.skills = Rules.normalize(selected, level);
+    if (hero.progression) hero.progression = window.HeroProgression.reconcileBonuses(hero.progression, hero.skills);
+    window.EquipmentModel.reconcileSkills(hero);
     dialog.close();
   });
   dialog.querySelector('#close-hero-skills').addEventListener('click', () => dialog.close());

@@ -29,6 +29,7 @@
 .editor-equipment-slot.selected { border-color: #ffe233; }
 .editor-equipment-slot.compatible { border-color: #8ba866; }
 .editor-equipment-slot.locked { filter: grayscale(1); opacity: .5; cursor: default; }
+.editor-equipment-slot.unavailable { filter: grayscale(1); opacity: .5; cursor: default; }
 .editor-equipment-tooltip {
   position: fixed; z-index: 2; max-width: min(360px, calc(100vw - 32px));
   box-sizing: border-box; padding: 8px; border: 3px ridge #baa168;

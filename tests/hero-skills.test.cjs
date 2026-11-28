@@ -78,7 +78,7 @@ test('all heroes round-trip full skill chains alongside progression in surface a
       map.mobs.push({ type, team: 'ally', x, y: 3, progression: P.create(8), skills: ['water-magic-1', 'water-magic-2', 'water-magic-3'] });
     });
     const saved = JSON.parse(JSON.stringify(M.serialize(map)));
-    assert.equal(saved.version, 11);
+    assert.equal(saved.version, 12);
     const loaded = M.readDocument(saved, types);
     assert.deepEqual(M.serialize(loaded), saved);
     loaded.mobs[0].skills.pop();

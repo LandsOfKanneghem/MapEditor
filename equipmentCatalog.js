@@ -343,6 +343,7 @@
     },
     "short-chainmail": {
       "id": "short-chainmail",
+      "armorType": "medium",
       "name": "Короткая кольчуга",
       "allowedSlots": [
         "chest"
@@ -354,6 +355,7 @@
     },
     "body-armor": {
       "id": "body-armor",
+      "armorType": "medium",
       "name": "Кольчуга",
       "iconPath": "assets/equipment/chainmail.png",
       "ac": 4,
@@ -401,6 +403,7 @@
     },
     "wood-buckler": {
       "id": "wood-buckler",
+      "equipmentType": "shield",
       "name": "Деревянный баклер",
       "allowedSlots": [
         "leftHand"
@@ -412,6 +415,7 @@
     },
     "wicker-shield": {
       "id": "wicker-shield",
+      "equipmentType": "shield",
       "name": "Плетёный щит",
       "allowedSlots": [
         "leftHand"
@@ -423,6 +427,7 @@
     },
     "plank-shield": {
       "id": "plank-shield",
+      "equipmentType": "shield",
       "name": "Дощатый щит",
       "allowedSlots": [
         "leftHand"
@@ -434,6 +439,7 @@
     },
     "hide-shield": {
       "id": "hide-shield",
+      "equipmentType": "shield",
       "name": "Обтянутый кожей щит",
       "allowedSlots": [
         "leftHand"
@@ -445,6 +451,7 @@
     },
     "iron-rim-shield": {
       "id": "iron-rim-shield",
+      "equipmentType": "shield",
       "name": "Щит с железным ободом",
       "allowedSlots": [
         "leftHand"
@@ -456,6 +463,7 @@
     },
     "shield": {
       "id": "shield",
+      "equipmentType": "shield",
       "name": "Щит",
       "iconPath": "assets/equipment/shield.png",
       "ac": 1,
@@ -466,6 +474,7 @@
     },
     "lion-shield": {
       "id": "lion-shield",
+      "equipmentType": "shield",
       "name": "Львиный щит",
       "allowedSlots": [
         "leftHand"

@@ -74,7 +74,7 @@
     if (item?.attack) {
       const a = item.attack;
       const weaponTypes = { dagger: 'Кинжал', sword: item.hands === 2 ? 'Двуручный меч' : 'Одноручный меч',
-        axe: item.hands === 2 ? 'Двуручный топор' : 'Одноручный топор', bow: 'Лук', sling: 'Праща' };
+        axe: item.hands === 2 ? 'Двуручный топор' : 'Одноручный топор', bow: 'Лук', crossbow: 'Арбалет', sling: 'Праща', staff: 'Посох', wand: 'Жезл', orb: 'Магическая сфера' };
       line('Оружие', weaponTypes[item.weaponType] ?? item.weaponType);
       line('ОД', a.apCost);
       line('Урон', `${a.damageBase} + ${a.damagePerStr ?? 0} × STR (${damageNames[a.damageType] ?? a.damageType})`);
@@ -105,8 +105,10 @@
         line('LOS', 'Требует');
         line('Эффект', `Горение на ${use.spell.durationBase} хода`);
       }
-      line('Применение', `${use.apCost ?? 2} ОД`);
+      line('Применение', `${window.HeroSkillRules.consumableCost(hero, item)} ОД`);
     }
+    const requiredSkill = window.HeroSkillRules.equipmentSkill(item);
+    if (requiredSkill) line('Требуется', window.HeroSkills.BY_ID[requiredSkill].name);
     dialog.append(tooltip);
     const rect = anchor.getBoundingClientRect();
     tooltip.style.left = `${Math.max(8, Math.min(rect.left, innerWidth - tooltip.offsetWidth - 8))}px`;
@@ -141,7 +143,7 @@
       const id = slot === 'leftHand' && items[hero.equipment.rightHand]?.hands === 2 ? hero.equipment.rightHand : hero.equipment[slot];
       const button = cell(items[id], slot);
       button.dataset.slot = slot;
-      button.classList.toggle('compatible', !!items[selectedId]?.allowedSlots.includes(slot));
+      button.classList.toggle('compatible', !!items[selectedId]?.allowedSlots.includes(slot) && window.HeroSkillRules.canEquip(hero, items[selectedId]));
       button.addEventListener('click', () => {
         if (selectedId && items[selectedId].allowedSlots.includes(slot)) Model.equip(hero, selectedId, slot);
         else Model.remove(hero, slot);
@@ -178,14 +180,19 @@
       const button = cell(item);
       if (item) {
         button.dataset.itemId = item.id;
+        const allowed = window.HeroSkillRules.canEquip(hero, item);
+        button.setAttribute('aria-disabled', String(!allowed));
+        button.classList.toggle('unavailable', !allowed);
         button.classList.toggle('selected', selectedId === item.id);
         // Keep the clicked DOM node alive between clicks so native dblclick works.
         button.addEventListener('click', () => {
+          if (!allowed) return;
           selectedId = item.id;
           for (const node of catalog.children) node.classList.toggle('selected', node.dataset.itemId === selectedId);
           renderGear();
         });
         button.addEventListener('dblclick', () => {
+          if (!allowed) return;
           Model.equip(hero, item.id);
           selectedId = null;
           render();

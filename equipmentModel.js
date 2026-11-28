@@ -5,6 +5,7 @@
   const Rules = node ? require('./mapEquipment.js') : root.MapEquipment;
   const Catalog = node ? require('./equipmentCatalog.js') : root.EquipmentCatalog;
   const items = Catalog.items;
+  const SkillRules = node ? require('./data/heroSkillRules.js') : root.HeroSkillRules;
   function initialize(mob) {
     if (!Rules.HEROES.includes(mob.type) || mob.team !== 'ally') throw new Error('Экипировка доступна только союзным героям.');
     if (mob.equipment === undefined) {
@@ -20,7 +21,7 @@
   }
   function equip(mob, id, slot) {
     const item = items[id];
-    if (!item) return false;
+    if (!item || !SkillRules.canEquip(mob, item)) return false;
     initialize(mob);
     if (item.consumable) {
       const count = capacity(mob);
@@ -51,7 +52,12 @@
     }
     return true;
   }
-  const api = Object.freeze({ initialize, capacity, equip, remove });
+  function reconcileSkills(mob) {
+    if (!mob.equipment) return;
+    for (const slot of Rules.SLOTS) if (!SkillRules.canEquip(mob, items[mob.equipment[slot]])) mob.equipment[slot] = null;
+    trimConsumables(mob);
+  }
+  const api = Object.freeze({ initialize, capacity, equip, remove, reconcileSkills });
   if (node) module.exports = api;
   else root.EquipmentModel = api;
 })(typeof window === 'undefined' ? globalThis : window);

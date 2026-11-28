@@ -6,7 +6,7 @@ const Model = require('../equipmentModel.js');
 const Catalog = require('../equipmentCatalog.js');
 const Rules = require('../mapEquipment.js');
 const Maps = require('../mapData.js');
-const hero = (type = 'warrior') => ({ type, team: 'ally', x: 2, y: 3 });
+const hero = (type = 'warrior') => ({ type, team: 'ally', x: 2, y: 3, progression: require('../heroProgression.js').create(4), skills: ['sword-1', 'shield-1', 'medium-armor-1', 'shooting-1', 'throwing-1'] });
 
 test('catalog has one definition per ID with existing transparent item and outline images', () => {
   const ids = Object.keys(Catalog.items);

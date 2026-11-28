@@ -72,7 +72,7 @@ test('progression and equipment round-trip together on each hero and each map en
   for (const mapType of ['surface', 'underground']) {
     const map = M.createMap(mapType);
     Object.keys(types).forEach((type, x) => {
-      const mob = { type, team: 'ally', x, y: 4, progression: P.create(30) };
+      const mob = { type, team: 'ally', x, y: 4, skills: ['sword-1'], progression: P.create(30) };
       P.allocate(mob.progression, 'int', 2, 1);
       Equipment.equip(mob, 'noon-blade');
       Equipment.equip(mob, 'healing-potion');
@@ -80,7 +80,7 @@ test('progression and equipment round-trip together on each hero and each map en
       map.mobs.push(mob);
     });
     const saved = JSON.parse(JSON.stringify(M.serialize(map)));
-    assert.equal(saved.version, 11);
+    assert.equal(saved.version, 12);
     const loaded = M.readDocument(saved, types);
     assert.deepEqual(M.serialize(loaded), saved);
     loaded.mobs[0].progression.allocations.int.two = 5;
