@@ -80,7 +80,7 @@ test('progression and equipment round-trip together on each hero and each map en
       map.mobs.push(mob);
     });
     const saved = JSON.parse(JSON.stringify(M.serialize(map)));
-    assert.equal(saved.version, 10);
+    assert.equal(saved.version, 11);
     const loaded = M.readDocument(saved, types);
     assert.deepEqual(M.serialize(loaded), saved);
     loaded.mobs[0].progression.allocations.int.two = 5;

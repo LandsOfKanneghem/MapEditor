@@ -5,6 +5,7 @@
   const Equipment = typeof module !== 'undefined' && module.exports ? require('./mapEquipment.js') : root.MapEquipment;
   const catalog = typeof module !== 'undefined' && module.exports ? require('./equipmentCatalog.js') : root.EquipmentCatalog;
   const Progression = typeof module !== 'undefined' && module.exports ? require('./heroProgression.js') : root.HeroProgression;
+  const Skills = typeof module !== 'undefined' && module.exports ? require('./heroSkills.js') : root.HeroSkills;
   const WIDTH = 12, HEIGHT = 12;
   const TERRAIN = Object.freeze({ grass: 0, sand: 1, 'deep-water': 2, dirt: 3,
     swamp: 4, 'shallow-water': 5, 'monastery-floor': 6, 'cave-earth': 7, void: 8 });
@@ -100,7 +101,7 @@
       if (!['ally', 'enemy'].includes(team) || (['wizard', 'monk', 'warrior', 'archer', 'halfling', 'druid'].includes(mob.type) && team !== 'ally'))
         throw new Error('Неверная сторона существа: ally или enemy.');
       return { type: mob.type, team, x: mob.x, y: mob.y,
-        ...Equipment.read({ ...mob, team }, catalog.items), ...Progression.read({ ...mob, team }) };
+        ...Equipment.read({ ...mob, team }, catalog.items), ...Progression.read({ ...mob, team }), ...Skills.read({ ...mob, team }) };
     });
     const savedObjects = version < 3 ? [] : data.objects;
     const objects = ObjectRules.readObjects(savedObjects, { mapType, tiles }, mobs, version);
@@ -117,7 +118,7 @@
   }
 
   function readDocument(data, mobTypes, objectTypes) {
-    if (data?.format !== 'kanneghem-map' || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(data.version)) {
+    if (data?.format !== 'kanneghem-map' || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(data.version)) {
       throw new Error('Неподдерживаемый формат или версия карты.');
     }
     if (data.width !== WIDTH || data.height !== HEIGHT) throw new Error(`Размер карты должен быть ${WIDTH}×${HEIGHT}.`);
@@ -134,10 +135,10 @@
   }
 
   function serialize(map, objectTypes) {
-    const saved = { format: 'kanneghem-map', version: 10, width: WIDTH, height: HEIGHT, mapType: map.mapType,
+    const saved = { format: 'kanneghem-map', version: 11, width: WIDTH, height: HEIGHT, mapType: map.mapType,
       tiles: map.tiles.map(row => row.map(t => NAMES[t])),
       mobs: map.mobs.map(mob => ({ type: mob.type, team: mob.team, x: mob.x, y: mob.y,
-        ...Equipment.read(mob, catalog.items), ...Progression.read(mob) })),
+        ...Equipment.read(mob, catalog.items), ...Progression.read(mob), ...Skills.read(mob) })),
       objects: map.objects.map(object => ({ ...ObjectRules.canonicalObject(map, object),
         blocking: ObjectRules.TYPES[object.type].blocking, interactive: ObjectRules.TYPES[object.type].interactive })) };
     if (map.wallStyles) saved.wallStyles = map.wallStyles.map(row => [...row]);

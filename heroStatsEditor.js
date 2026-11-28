@@ -82,6 +82,7 @@
   }
   dialog.querySelector('#save-hero-stats').addEventListener('click', () => {
     hero.progression = Rules.normalize(draft);
+    if (hero.skills !== undefined) hero.skills = window.HeroSkills.reconcile(hero.skills, hero.progression.level);
     dialog.close();
   });
   dialog.querySelector('#close-hero-stats').addEventListener('click', () => dialog.close());

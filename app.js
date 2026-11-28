@@ -594,6 +594,7 @@
   function activateMap(nextMap) {
     window.EquipmentEditor.close();
     window.HeroStatsEditor.close();
+    window.HeroSkillsEditor.close();
     endStroke();
     selectEntity(null);
     currentFileHandle = null;
@@ -863,7 +864,11 @@
   statsOption.type = 'button';
   statsOption.textContent = 'Характеристики';
   statsOption.setAttribute('role', 'menuitem');
-  mobMenu.append(teamOption, equipmentOption, statsOption);
+  const skillsOption = document.createElement('button');
+  skillsOption.type = 'button';
+  skillsOption.textContent = 'Навыки';
+  skillsOption.setAttribute('role', 'menuitem');
+  mobMenu.append(teamOption, equipmentOption, statsOption, skillsOption);
   document.body.appendChild(mobMenu);
   let contextMob = null;
   function closeMobMenu() { mobMenu.hidden = true; contextMob = null; }
@@ -873,6 +878,10 @@
   });
   statsOption.addEventListener('click', () => {
     if (contextMob && mobs.includes(contextMob)) window.HeroStatsEditor.open(contextMob, MOB_TYPES[contextMob.type].name);
+    closeMobMenu();
+  });
+  skillsOption.addEventListener('click', () => {
+    if (contextMob && mobs.includes(contextMob)) window.HeroSkillsEditor.open(contextMob, MOB_TYPES[contextMob.type].name);
     closeMobMenu();
   });
   teamOption.addEventListener('click', () => {
@@ -897,6 +906,7 @@
     teamOption.hidden = hero;
     equipmentOption.hidden = !hero;
     statsOption.hidden = !hero;
+    skillsOption.hidden = !hero;
     mobMenu.hidden = false;
     mobMenu.style.left = `${Math.max(0, Math.min(event.clientX, innerWidth - mobMenu.offsetWidth))}px`;
     mobMenu.style.top = `${Math.max(0, Math.min(event.clientY, innerHeight - mobMenu.offsetHeight))}px`;
@@ -910,7 +920,7 @@
   deleteButton.addEventListener('click', deleteSelection);
   document.addEventListener('keydown', event => {
     if (event.key !== 'Delete') return;
-    if (window.EquipmentEditor.isOpen() || window.HeroStatsEditor.isOpen()) return;
+    if (window.EquipmentEditor.isOpen() || window.HeroStatsEditor.isOpen() || window.HeroSkillsEditor.isOpen()) return;
     if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]')) return;
     if (deleteSelection()) event.preventDefault();
   });
