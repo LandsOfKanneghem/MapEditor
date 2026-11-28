@@ -1,0 +1,29 @@
+#hero-stats-dialog {
+  box-sizing: border-box; width: 600px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px);
+  overflow: auto; padding: 20px; border: 3px ridge #baa168; color: #462b18; background: #ddc8a3;
+}
+#hero-stats-dialog::backdrop { background: #0007; }
+#hero-stats-title { margin: 0 0 18px; color: inherit; }
+#hero-stats-dialog button {
+  font: inherit; padding: 5px 10px; border: 1px solid #8e6a3d; border-radius: 0;
+  background: #efdfbd; color: #462b18; cursor: pointer;
+}
+#hero-stats-dialog button:disabled { opacity: .35; cursor: default; }
+#hero-stats-dialog button:focus-visible { outline: 2px solid #76541e; outline-offset: 2px; }
+.hero-level-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid #987343; }
+.hero-level-controls, .hero-allocation-controls { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.hero-level-controls output { min-width: 26px; text-align: center; font-weight: bold; }
+.hero-budget { display: flex; gap: 16px; margin-left: auto; font-weight: bold; }
+.hero-attribute-row, .hero-attribute-head { display: grid; grid-template-columns: 1fr 1fr 1.7fr 1.7fr; align-items: center; gap: 8px; }
+.hero-attribute-head { padding: 14px 0 8px; font-size: 13px; text-align: center; }
+.hero-attribute-head > :first-child { text-align: left; }
+.hero-attribute-row { padding: 7px 0; border-bottom: 1px solid #b99c72; }
+.hero-attribute-value { text-align: center; font-weight: bold; }
+.hero-allocation-controls output { min-width: 38px; text-align: center; font-variant-numeric: tabular-nums; }
+.hero-stats-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+@media (max-width: 480px) {
+  #hero-stats-dialog { padding: 12px; font-size: 14px; }
+  #hero-stats-dialog button { padding: 5px 7px; }
+  .hero-attribute-row, .hero-attribute-head { gap: 3px; grid-template-columns: .7fr .7fr 1.5fr 1.5fr; }
+  .hero-allocation-controls { gap: 2px; }
+}

@@ -354,6 +354,7 @@
     if (!canPlace(cell)) return null;
     const type = editorMode === 'allies' ? selectedAlly : selectedMob;
     const mob = { type, team: MOB_TYPES[type].team, x: cell.x, y: cell.y };
+    if (window.MapEquipment.HEROES.includes(type)) mob.progression = window.HeroProgression.create();
     mobs.push(mob);
     renderMobs();
     return mob;
@@ -592,6 +593,7 @@
 
   function activateMap(nextMap) {
     window.EquipmentEditor.close();
+    window.HeroStatsEditor.close();
     endStroke();
     selectEntity(null);
     currentFileHandle = null;
@@ -857,12 +859,20 @@
   equipmentOption.type = 'button';
   equipmentOption.textContent = 'Экипировка';
   equipmentOption.setAttribute('role', 'menuitem');
-  mobMenu.append(teamOption, equipmentOption);
+  const statsOption = document.createElement('button');
+  statsOption.type = 'button';
+  statsOption.textContent = 'Характеристики';
+  statsOption.setAttribute('role', 'menuitem');
+  mobMenu.append(teamOption, equipmentOption, statsOption);
   document.body.appendChild(mobMenu);
   let contextMob = null;
   function closeMobMenu() { mobMenu.hidden = true; contextMob = null; }
   equipmentOption.addEventListener('click', () => {
     if (contextMob && mobs.includes(contextMob)) window.EquipmentEditor.open(contextMob, MOB_TYPES[contextMob.type].name);
+    closeMobMenu();
+  });
+  statsOption.addEventListener('click', () => {
+    if (contextMob && mobs.includes(contextMob)) window.HeroStatsEditor.open(contextMob, MOB_TYPES[contextMob.type].name);
     closeMobMenu();
   });
   teamOption.addEventListener('click', () => {
@@ -886,6 +896,7 @@
     teamOption.textContent = `Поменять сторону: ${mob.team === 'ally' ? 'враги' : 'союзники'}`;
     teamOption.hidden = hero;
     equipmentOption.hidden = !hero;
+    statsOption.hidden = !hero;
     mobMenu.hidden = false;
     mobMenu.style.left = `${Math.max(0, Math.min(event.clientX, innerWidth - mobMenu.offsetWidth))}px`;
     mobMenu.style.top = `${Math.max(0, Math.min(event.clientY, innerHeight - mobMenu.offsetHeight))}px`;
@@ -899,7 +910,7 @@
   deleteButton.addEventListener('click', deleteSelection);
   document.addEventListener('keydown', event => {
     if (event.key !== 'Delete') return;
-    if (window.EquipmentEditor.isOpen()) return;
+    if (window.EquipmentEditor.isOpen() || window.HeroStatsEditor.isOpen()) return;
     if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]')) return;
     if (deleteSelection()) event.preventDefault();
   });
